@@ -1,3 +1,5 @@
+[Demo](https://nullpointer-artem.github.io/re-fund-chart/)
+
 ## Install
 
 To get started please run this command for install all needed npm packages locally
