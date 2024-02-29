@@ -1,0 +1,30 @@
+{
+  "root": true,
+  "globals": {},
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "plugins": [
+    "import",
+    "prettier",
+    "pug"
+  ],
+  "extends": [
+    "airbnb-base",
+    "prettier"
+  ],
+  "rules": {
+    "prettier/prettier": "off",
+    "no-unused-vars": "warn",
+    "no-console": "off",
+    "import/first": "off",
+    "import/extensions": "off",
+    "no-underscore-dangle": "off",
+    "import/no-extraneous-dependencies": "off",
+    "func-names": "off",
+    "import/prefer-default-export": "off",
+    "no-undef": "off",
+    "no-plusplus": "off"
+  }
+}

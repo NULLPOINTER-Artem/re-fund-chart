@@ -1,0 +1,14 @@
+include ../abstract/mixins.pug
+
+doctype html
+html(lang='en')
+  block head
+  include ../partitions/head.pug
+
+  body
+    include ../partitions/header.pug
+
+    .container
+      block content
+
+    include ../partitions/scripts.pug

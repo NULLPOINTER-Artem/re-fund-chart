@@ -1,0 +1,4 @@
+mixin icon(name, styles)
+  - styles = styles ? ' ' + styles : '';
+  svg(class=`icon${styles}`)
+    use(xlink:href='@images/icons/icons.svg#' + name)

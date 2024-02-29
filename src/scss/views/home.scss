@@ -1,0 +1,11 @@
+.heading {
+  font-size: 32px;
+
+  @include media('xxl') {
+    font-size: 72px;
+  }
+
+  @include media('lg') {
+    font-size: 24px;
+  }
+}

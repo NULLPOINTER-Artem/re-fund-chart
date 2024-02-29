@@ -1,0 +1,20 @@
+//* Fonts *// (will have created after run a gulp task)
+@import "./fonts.scss";
+
+//* NPM CSS styles *//
+@import "./../../node_modules/normalize.css/normalize"; //! import CSS files without .css !!!
+
+//* Foundation modules *//
+@import "./foundation/main.scss";
+
+//* Reset modules *//
+@import "./reset/*.scss";
+
+//* Layout modules *//
+@import "./layout/*.scss";
+
+//* Views modules *//
+@import "./views/*.scss";
+
+//* Components *//
+@import "./components/*.scss";

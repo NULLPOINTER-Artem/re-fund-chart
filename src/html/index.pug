@@ -1,0 +1,10 @@
+extends layouts/default.pug
+
+block head
+  - const namePage = 'index';
+  - const pageTitle = 'Main Page';
+
+block content
+  .chart-container
+    button.chart-month(type="button") month
+    canvas#chart-price
