@@ -5,6 +5,8 @@ import Chart from 'chart.js/auto';
 
 const BACKEND_ENDPOINT = 'https://rfd-backend.vercel.app';
 
+// HELPERS Funcs
+
 function convertTimeTo12HourFormat(time24) {
   const [hours, minutes] = time24.split(':').map(Number);
   const dummyDate = new Date(1970, 0, 1, hours, minutes);
@@ -16,11 +18,15 @@ function convertTimeTo12HourFormat(time24) {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${amPm}`;
 };
 
-const selectedTimeFrame = 'day';
+let chartInstance = null;
+let selectedTimeFrame = 'day';
 const fetchedData = {
   time: [],
   data: []
 };
+
+// FETCH DATA HANDLERS
+
 // format = 'day' | 'week' | 'month'
 //* mb output all in time without date, just expend time period (day | week | month)
 const transformDataInChartData = (response = []) => {
@@ -51,6 +57,8 @@ const fetchChartData = async (days = 1) => {
   return [];
 };
 
+// TIME FRAME HANDLERS
+
 // month NO 0-index bases (use 1-12)
 const getDaysInMonth = (month, year) => {
   const lastDayOfMonth = new Date(year, month, 0);
@@ -70,13 +78,127 @@ const handleTimeFrameSelect = async (format = 'day') => {
   const response = await fetchChartData((map.true && map.true()) || 1);
   transformDataInChartData(response);
 };
+const handlerBtnMonth = async () => {
+  selectedTimeFrame = 'month';
+
+  await handleTimeFrameSelect(selectedTimeFrame);
+
+  if (chartInstance) {
+    //* mb re-create whole chart?
+    chartInstance.data.labels = fetchedData.time;
+    chartInstance.data.datasets[0].data = fetchedData.data.map(Number);
+
+    chartInstance.update('none');
+  }
+};
+
+// MOUSE POINT HANDLERS
+
+const crosshairPoint = (chart, mousemove) => {
+  const {
+    ctx,
+    data,
+    chartArea: {
+      top, bottom, left, right,
+      width, height,
+    },
+    scales: { x, y },
+  } = chart;
+
+  const coorX = mousemove.offsetX;
+  const coorY = mousemove.offsetY;
+
+  chart.update('none');
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.fillStyle = '#2FEC2F';
+  ctx.fillStyle = '#666';
+  ctx.lineWidth = 3;
+  ctx.setLineDash([]);
+
+  const angle = Math.PI / 180;
+  const segments = width / (fetchedData.time.length - 1);
+  const index = Math.floor((coorX - left) / segments);
+  const yStart = y.getPixelForValue(data.datasets[0].data[index]);
+  const yEnd = y.getPixelForValue(data.datasets[0].data[index + 1]);
+  const pointPosition = yStart + (
+    (yEnd - yStart) /
+    (width / segments) *
+    (coorX - x.getPixelForValue(data.labels[index]))
+  );
+
+  ctx.arc(
+    coorX,
+    pointPosition,
+    5,
+    angle * 0,
+    angle * 360,
+    false
+  );
+  ctx.fill();
+  ctx.stroke();
+
+  // console.log('x._gridLineItems');
+  // console.dir(x._gridLineItems);
+  // console.log('data.datasets');
+  // console.dir(data.datasets);
+
+  // for (let i = 0; i < segments; i++) {
+  //   if (coorX >= x._gridLineItems[i].tx1 && coorX <= x._gridLineItems[i + 1].tx1) {
+  //     console.log('data.datasets[0].data[i]');
+  //     console.dir(data.datasets[0].data[i]);
+  //     const yStart = y.getPixelForValue(data.datasets[0].data[i]);
+  //     const yEnd = y.getPixelForValue(data.datasets[0].data[i + 1]);
+
+  //     console.log(`height ${height}`);
+  //     console.log(`yStart ${yStart}`);
+  //     console.log(`yEnd ${yEnd}`);
+  //     console.log(`coorY ${coorY}`);
+  //     console.log(`coorX ${coorX}`);
+  //     console.log(`coorY calc ${yStart + (
+  //       (yEnd - yStart) / (width / segments) * (coorX - x._gridLineItems[i].tx1)
+  //     )}`);
+  //     console.log(`yEnd - yStart ${yEnd - yStart}`);
+  //     console.log(`width / segments ${width / segments}`);
+  //     console.log(`coorX - x._gridLineItems[i].tx1 ${coorX - x._gridLineItems[i].tx1}`);
+  //     console.log(`res ${((yEnd - yStart) / (width / segments)) * (coorX - x._gridLineItems[i].tx1)}`);
+  //     console.log(`finish ${yStart + (
+  //       (yEnd - yStart) / (width / segments) * (coorX - x._gridLineItems[i].tx1)
+  //     )}`);
+
+  //     const pointPosition = yStart + (
+  //       (yEnd - yStart) /
+  //       (width / segments) *
+  //       (coorX - x._gridLineItems[i].tx1)
+  //     );
+
+  //     console.log(`RES RES ${(pointPosition - (pointPosition - coorY))}`);
+
+  //     ctx.arc(
+  //       coorX,
+  //       pointPosition,
+  //       5,
+  //       angle * 0,
+  //       angle * 360,
+  //       false
+  //     );
+  //     ctx.fill();
+  //     ctx.stroke();
+  //   }
+  // }
+};
+
+const mousemoveChartHandler = (chart, mousemove) => {
+  crosshairPoint(chart, mousemove);
+};
 
 export const init = async () => {
   const contextChart = document.querySelector('#chart-price').getContext('2d');
   const btnMonth = document.querySelector('.chart-month');
 
   if (btnMonth) {
-    btnMonth.addEventListener('click', () => handleTimeFrameSelect('month'));
+    btnMonth.addEventListener('click', handlerBtnMonth);
   }
 
   // default time frame == 'day'
@@ -119,6 +241,9 @@ export const init = async () => {
       data: fetchedData.data.map(Number),
       borderColor: [],
       borderWidth: 3,
+      pointRadius: 0,
+      pointHitRadius: 0,
+      pointHoverRadius: 0,
       fill: true,
       segment: {
         borderColor: ctx => upVal(ctx, '#2FEC2F') || downVal(ctx, '#FF0000'),
@@ -136,7 +261,7 @@ export const init = async () => {
     }
   }
 
-  const chartInstance = new Chart(contextChart, {
+  chartInstance = new Chart(contextChart, {
     type: 'line',
     data,
     // plugins: [
@@ -201,8 +326,17 @@ export const init = async () => {
     },
   });
 
+  chartInstance.canvas.addEventListener('mousemove',
+    (event) => {
+      mousemoveChartHandler(chartInstance, event);
+    }
+  );
+
+  console.log('chartInstance');
+  console.dir(chartInstance.scales.x);
+
   return () => {
     chartInstance.destroy();
-    btnMonth.removeEventListener('click', handleMonthSelect);
+    btnMonth.removeEventListener('click', handlerBtnMonth);
   };
 };
