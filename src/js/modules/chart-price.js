@@ -18,18 +18,67 @@ function convertTimeTo12HourFormat(time24) {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${amPm}`;
 };
 
+let actionBarChart = null;
+let chartWrapperEl = null;
+let noDataEl = null;
+let loader = null;
 let chartInstance = null;
-let selectedTimeFrame = 'day';
+let selectedTimeFrame = '';
 const fetchedData = {
   time: [],
   data: []
 };
+const resetFetchedData = () => {
+  fetchedData.data.splice(0, fetchedData.data.length);
+  fetchedData.time.splice(0, fetchedData.time.length);
+};
 
 // FETCH DATA HANDLERS
+
+const handlerNoData = () => {
+  if (noDataEl) {
+    if (chartWrapperEl) chartWrapperEl.classList.remove('active');
+    if (loader) loader.classList.remove('active');
+    noDataEl.classList.add('active');
+
+    if (actionBarChart && actionBarChart.classList.contains('disabled')) {
+      actionBarChart.classList.remove('disabled');
+    }
+  }
+};
+
+const handlerLoading = (show = true) => {
+  if (loader) {
+    if (chartWrapperEl) chartWrapperEl.classList.remove('active');
+    if (noDataEl) noDataEl.classList.remove('active');
+
+    if (show) {
+      actionBarChart.classList.add('disabled');
+      loader.classList.add('active');
+    }
+    else {
+      actionBarChart.classList.remove('disabled');
+      loader.classList.remove('active');
+    }
+  }
+};
+
+const handlerChart = () => {
+  if (chartWrapperEl) {
+    if (noDataEl) noDataEl.classList.remove('active');
+    if (loader) loader.classList.remove('active');
+    chartWrapperEl.classList.add('active');
+  }
+};
 
 // format = 'day' | 'week' | 'month'
 //* mb output all in time without date, just expend time period (day | week | month)
 const transformDataInChartData = (response = []) => {
+  if (!response.length) {
+    handlerNoData();
+    return;
+  }
+
   response.forEach((item) => {
     // convert (from UTC) to locale date
     const [date, time] = item.date.split(' ');
@@ -38,20 +87,25 @@ const transformDataInChartData = (response = []) => {
     fetchedData.time.push(convertTimeTo12HourFormat(time));
     fetchedData.data.push(price);
   });
+
+  handlerChart();
 };
 const fetchChartData = async (days = 1) => {
+  handlerLoading();
+  resetFetchedData();
   let response = null;
 
   try {
     response = await fetch(`${BACKEND_ENDPOINT}/getChartData/${days}`);
+    response = await response.json();
 
-    if (response.status && response.status === 200) {
-      return await response.json();
-    }
+    if (response.error) throw new Error(response.error || 'Error while fetching chart price data');
 
-    throw new Error(response.error || 'Error while fetching chart price data');
+    handlerLoading(false);
+    return response;
   } catch (err) {
     console.error(`FETCH-CHART-PRICE ${err}`);
+    handlerNoData();
   }
 
   return [];
@@ -78,19 +132,30 @@ const handleTimeFrameSelect = async (format = 'day') => {
   const response = await fetchChartData((map.true && map.true()) || 1);
   transformDataInChartData(response);
 };
-const handlerBtnMonth = async () => {
-  selectedTimeFrame = 'month';
 
+async function handleActionBar(event) {
+  if (event.target.dataset.action === selectedTimeFrame) return;
+
+  // set selected time frame
+  selectedTimeFrame = event.target.dataset.action;
+  const allActionBtn = [].slice.call(this.querySelectorAll('button[data-type=action]'));
+
+  allActionBtn.forEach((actionBtn) => {
+    if (actionBtn.dataset.action === selectedTimeFrame) actionBtn.classList.add('active');
+    else actionBtn.classList.remove('active');
+  });
+
+  // fetch data
   await handleTimeFrameSelect(selectedTimeFrame);
 
+  // update the chart
   if (chartInstance) {
-    //* mb re-create whole chart?
-    chartInstance.data.labels = fetchedData.time;
-    chartInstance.data.datasets[0].data = fetchedData.data.map(Number);
-
-    chartInstance.update('none');
+    // eslint-disable-next-line no-use-before-define
+    chartDestroy();
+    // eslint-disable-next-line no-use-before-define
+    chartCreate();
   }
-};
+}
 
 // MOUSE POINT HANDLERS
 
@@ -189,51 +254,42 @@ const crosshairPoint = (chart, mousemove) => {
   // }
 };
 
-const mousemoveChartHandler = (chart, mousemove) => {
+const mousemoveChart = (chart, mousemove) => {
   crosshairPoint(chart, mousemove);
 };
 
-export const init = async () => {
-  const contextChart = document.querySelector('#chart-price').getContext('2d');
-  const btnMonth = document.querySelector('.chart-month');
+function mousemoveChartHandler(mousemove) {
+  mousemoveChart(chartInstance, mousemove);
+};
 
-  if (btnMonth) {
-    btnMonth.addEventListener('click', handlerBtnMonth);
-  }
+// Chart Helpers
 
-  // default time frame == 'day'
-  await handleTimeFrameSelect(selectedTimeFrame);
+// eslint-disable-next-line no-nested-ternary
+const upVal = (ctx, color, gradient = false) => ctx.p0.parsed.y < ctx.p1.parsed.y ? (
+  gradient ? (() => {
+    const grd = ctx.chart.ctx.createLinearGradient(0, ctx.p0.y / 2, 0, 0);
+    grd.addColorStop(0, '#2fec2f40');
+    grd.addColorStop(1, color);
+    return grd;
+  })() : color
+) : undefined;
+// eslint-disable-next-line no-nested-ternary
+const downVal = (ctx, color, gradient = false) => ctx.p0.parsed.y > ctx.p1.parsed.y ? (
+  gradient ? (() => {
+    const grd = ctx.chart.ctx.createLinearGradient(0, ctx.p0.y / 2, 0, 0);
+    grd.addColorStop(0, '#ff000040');
+    grd.addColorStop(1, color);
+    return grd;
+  })() : color
+) : undefined;
 
-  console.log('fetchedData');
-  console.dir(fetchedData);
+function chartDestroy() {
+  chartInstance.canvas.removeEventListener('mousemove', mousemoveChartHandler);
+  chartInstance.destroy();
+};
 
-  /**
-   * datasets: [{
-        data: fetchedData.data.map((item, index) => ({
-          x: fetchedData.time[index],
-          y: item
-        }))
-      }]
-   */
-
-  // eslint-disable-next-line no-nested-ternary
-  const upVal = (ctx, color, gradient = false) => ctx.p0.parsed.y < ctx.p1.parsed.y ? (
-    gradient ? (() => {
-      const grd = ctx.chart.ctx.createLinearGradient(0, ctx.p0.y, 0, 0);
-      grd.addColorStop(0, '#2fec2f40');
-      grd.addColorStop(1, color);
-      return grd;
-    })() : color
-  ) : undefined;
-  // eslint-disable-next-line no-nested-ternary
-  const downVal = (ctx, color, gradient = false) => ctx.p0.parsed.y > ctx.p1.parsed.y ? (
-    gradient ? (() => {
-      const grd = ctx.chart.ctx.createLinearGradient(0, ctx.p0.y, 0, 0);
-      grd.addColorStop(0, '#ff000040');
-      grd.addColorStop(1, color);
-      return grd;
-    })() : color
-  ) : undefined;
+function chartCreate() {
+  const contextChart = chartWrapperEl.querySelector('#chart-price').getContext('2d');
 
   const data = {
     labels: fetchedData.time,
@@ -244,6 +300,7 @@ export const init = async () => {
       pointRadius: 0,
       pointHitRadius: 0,
       pointHoverRadius: 0,
+      //* MB set target value for draw red/green line on the chart? (for example yesterday latest price)
       fill: true,
       segment: {
         borderColor: ctx => upVal(ctx, '#2FEC2F') || downVal(ctx, '#FF0000'),
@@ -293,27 +350,91 @@ export const init = async () => {
     options: {
       scales: {
         x: {
+          // type: 'time',
+          position: 'bottom',
           grid: {
             display: false
           },
           border: {
             display: false
           },
+          ticks: {
+            autoSkip: true,
+            autoSkipPadding: 50,
+            maxRotation: 0,
+            color: '#fff',
+            font: {
+              // family: '',
+              size: 12,
+              weight: 'normal',
+              style: 'normal',
+            }
+          },
+          // time: {
+          //   displayFormats: {
+          //     hour: 'HH:mm',
+          //     minute: 'HH:mm',
+          //     second: 'HH:mm:ss'
+          //   }
+          // }
         },
         y: {
+          grid: {
+            color: '#ffffff1a',
+            lineWidth: 1,
+          },
           border: {
             display: false,
           },
           ticks: {
-            callback: (val, i, ticks) => (i < ticks.length - 1 ? Number(val).toPrecision(3) : null),
+            callback: (val, i, ticks) => (
+              i < ticks.length - 1 ?
+                String(Number(val).toPrecision(3))
+                  .toLowerCase()
+                  .split('').join('\u200A'.repeat(1))
+                : null
+            ),
             display: true,
             mirror: true,
-            labelOffset: -7,
-            padding: -4
+            labelOffset: -11,
+            padding: -4,
+            color: '#fff',
+            font: {
+              // family: '',
+              size: 12,
+              color: '#fff',
+              weight: 'normal',
+              style: 'normal',
+              letterSpacing: 2
+            }
           },
         }
       },
       plugins: {
+        // zoom: {
+        //   limits: {
+        //     x: { min: 'original', max: 'original', minRange: 60 * 1000 },
+        //   },
+        //   pan: {
+        //     enabled: true,
+        //     mode: 'x',
+        //     modifierKey: 'ctrl',
+        //     onPanComplete: startFetch
+        //   },
+        //   zoom: {
+        //     wheel: {
+        //       enabled: true,
+        //     },
+        //     drag: {
+        //       enabled: true,
+        //     },
+        //     pinch: {
+        //       enabled: true
+        //     },
+        //     mode: 'x',
+        //     onZoomComplete: startFetch
+        //   }
+        // },
         legend: {
           display: false
         },
@@ -326,17 +447,27 @@ export const init = async () => {
     },
   });
 
-  chartInstance.canvas.addEventListener('mousemove',
-    (event) => {
-      mousemoveChartHandler(chartInstance, event);
-    }
-  );
+  chartInstance.canvas.addEventListener('mousemove', mousemoveChartHandler);
+};
 
-  console.log('chartInstance');
-  console.dir(chartInstance.scales.x);
+export const init = async () => {
+  chartWrapperEl = document.querySelector('.chart__wrapper');
+  noDataEl = document.querySelector('.chart__empty-text');
+  loader = document.querySelector('.chart__loader');
+  actionBarChart = document.querySelector('.chart__action-bar');
+  const btnDay = document.querySelector('.chart__btn-day');
+
+  if (actionBarChart) actionBarChart.addEventListener('click', handleActionBar);
+
+  // default time frame == 'day'
+  btnDay.dispatchEvent(new Event('click', {
+    bubbles: true,
+    cancelable: true
+  }));
+
+  chartCreate();
 
   return () => {
-    chartInstance.destroy();
-    btnMonth.removeEventListener('click', handlerBtnMonth);
+    chartDestroy();
   };
 };

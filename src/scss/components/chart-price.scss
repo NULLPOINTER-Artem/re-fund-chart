@@ -1,0 +1,117 @@
+.chart-container {
+  margin: auto;
+  padding-top: 100px;
+  position: relative;
+
+  .chart__wrapper {
+    display: none;
+    position: relative;
+
+    &.active {
+      display: block;
+    }
+  }
+}
+
+.chart__action-bar {
+  position: absolute;
+  right: 0;
+  top: 100px;
+  z-index: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+
+  &.disabled {
+    pointer-events: none;
+  }
+
+  .chart__btn-day,
+  .chart__btn-week,
+  .chart__btn-month {
+    color: #fff;
+    font-size: 16px;
+    background: transparent;
+    border: none;
+    letter-spacing: 0.05em;
+
+    &.active {
+      color: #d8fa06;
+      position: relative;
+      font-weight: 700;
+
+      &::before,
+      &::after {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      &::before {
+        content: ">";
+        left: -4px;
+      }
+
+      &::after {
+        content: "<";
+        right: -4px;
+      }
+    }
+
+    @media (hover: hover) {
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+
+    @media (hover: none) {
+      &:active {
+        opacity: 0.8;
+      }
+    }
+  }
+}
+
+.chart__empty-text {
+  display: none;
+  text-align: center;
+  font-size: 44px;
+  color: #fff;
+
+  &.active {
+    display: block;
+    padding-top: 150px;
+  }
+}
+
+.chart__loader {
+  display: none;
+  width: 100%;
+
+  align-items: center;
+  justify-content: center;
+
+  &.active {
+    display: flex;
+    padding-top: 150px;
+  }
+
+  svg {
+    width: 44px;
+    height: 44px;
+    color: #fff;
+    
+    animation: spin 0.4s infinite;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

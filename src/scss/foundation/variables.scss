@@ -58,6 +58,7 @@ $gutter-width: 30px !default;
   --color-black: #000;
   --color-grey: #999;
   --color-blue: #39f;
+  --color-dark-gray: #343434;
 
   // Fonts
   --font-sans-serif: Poppins, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
@@ -68,7 +69,7 @@ $gutter-width: 30px !default;
     "Liberation Mono", "Courier New", monospace;
 
   // Body base
-  --base-background-color: var(--color-white);
+  --base-background-color: var(--color-dark-gray);
   --base-font-family: var(--font-sans-serif);
   --base-font-size: 1.6rem;
   --base-line-height: 1.2;
