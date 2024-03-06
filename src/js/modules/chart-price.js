@@ -1,7 +1,8 @@
 /**
  * Chart.js have bundle optimization, auto - this is not optimization (we import all of Chart.js)
  */
-import Chart from 'chart.js/auto';
+import Chart, { Tooltip } from 'chart.js/auto';
+import { format } from 'date-fns';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import 'chartjs-adapter-date-fns';
 
@@ -9,32 +10,12 @@ Chart.register(zoomPlugin);
 
 const BACKEND_ENDPOINT = 'https://rfd-backend.vercel.app';
 
-// HELPERS Funcs
-
-function convertTimeTo12HourFormat(time24) {
-  const [hours, minutes] = time24.split(':').map(Number);
-  const dummyDate = new Date(1970, 0, 1, hours, minutes);
-
-  let hours12 = dummyDate.getHours();
-  const amPm = hours12 >= 12 ? 'PM' : 'AM';
-  hours12 = hours12 % 12 || 12;
-
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${amPm}`;
-};
-
 let actionBarChart = null;
 let chartWrapperEl = null;
 let noDataEl = null;
 let loader = null;
 let chartInstance = null;
 let selectedTimeFrame = '';
-const setAxisTimeUnit = () => {
-  if (selectedTimeFrame === 'day') return 'hour';
-  if (selectedTimeFrame === 'week') return 'day';
-  if (selectedTimeFrame === 'month') return 'week';
-
-  return 'hour';
-};
 /*
   Type FetchedData = {
     x: Date | string,
@@ -97,9 +78,6 @@ const transformDataInChartData = (response = []) => {
     y: item.price.toFixed(8)
   }));
 
-  console.log('fetchedData');
-  console.dir(fetchedData);
-
   handlerChart();
 };
 const fetchChartData = async (days = 1) => {
@@ -130,11 +108,11 @@ const getDaysInMonth = (month, year) => {
   return lastDayOfMonth.getDate();
 };
 // format = 'day' | 'week' | 'month'
-const handleTimeFrameSelect = async (format = 'day') => {
+const handleTimeFrameSelect = async (formatTimeFrame = 'day') => {
   const map = {
-    [format === 'day']: () => 1,
-    [format === 'week']: () => 7,
-    [format === 'month']: () => {
+    [formatTimeFrame === 'day']: () => 1,
+    [formatTimeFrame === 'week']: () => 7,
+    [formatTimeFrame === 'month']: () => {
       const currentDate = new Date();
       return getDaysInMonth(currentDate.getMonth() + 1, currentDate.getFullYear())
     },
@@ -168,134 +146,28 @@ async function handleActionBar(event) {
   }
 }
 
-// MOUSE POINT HANDLERS
-
-const crosshairPoint = (chart, mousemove) => {
-  const {
-    ctx,
-    data,
-    chartArea: {
-      top, bottom, left, right,
-      width, height,
-    },
-    scales: { x, y },
-  } = chart;
-
-  const coorX = mousemove.offsetX;
-  const coorY = mousemove.offsetY;
-
-  chart.update('none');
-  ctx.restore();
-
-  ctx.beginPath();
-  ctx.fillStyle = '#2FEC2F';
-  ctx.fillStyle = '#666';
-  ctx.lineWidth = 3;
-  ctx.setLineDash([]);
-
-  const angle = Math.PI / 180;
-  const segments = width / (fetchedData.length - 1);
-  const index = Math.floor((coorX - left) / segments);
-  const yStart = y.getPixelForValue(data.datasets[0].data[index]);
-  const yEnd = y.getPixelForValue(data.datasets[0].data[index + 1]);
-  const pointPosition = yStart + (
-    (yEnd - yStart) /
-    (width / segments) *
-    (coorX - x.getPixelForValue(data.labels[index]))
-  );
-
-  ctx.arc(
-    coorX,
-    pointPosition,
-    5,
-    angle * 0,
-    angle * 360,
-    false
-  );
-  ctx.fill();
-  ctx.stroke();
-
-  // console.log('x._gridLineItems');
-  // console.dir(x._gridLineItems);
-  // console.log('data.datasets');
-  // console.dir(data.datasets);
-
-  // for (let i = 0; i < segments; i++) {
-  //   if (coorX >= x._gridLineItems[i].tx1 && coorX <= x._gridLineItems[i + 1].tx1) {
-  //     console.log('data.datasets[0].data[i]');
-  //     console.dir(data.datasets[0].data[i]);
-  //     const yStart = y.getPixelForValue(data.datasets[0].data[i]);
-  //     const yEnd = y.getPixelForValue(data.datasets[0].data[i + 1]);
-
-  //     console.log(`height ${height}`);
-  //     console.log(`yStart ${yStart}`);
-  //     console.log(`yEnd ${yEnd}`);
-  //     console.log(`coorY ${coorY}`);
-  //     console.log(`coorX ${coorX}`);
-  //     console.log(`coorY calc ${yStart + (
-  //       (yEnd - yStart) / (width / segments) * (coorX - x._gridLineItems[i].tx1)
-  //     )}`);
-  //     console.log(`yEnd - yStart ${yEnd - yStart}`);
-  //     console.log(`width / segments ${width / segments}`);
-  //     console.log(`coorX - x._gridLineItems[i].tx1 ${coorX - x._gridLineItems[i].tx1}`);
-  //     console.log(`res ${((yEnd - yStart) / (width / segments)) * (coorX - x._gridLineItems[i].tx1)}`);
-  //     console.log(`finish ${yStart + (
-  //       (yEnd - yStart) / (width / segments) * (coorX - x._gridLineItems[i].tx1)
-  //     )}`);
-
-  //     const pointPosition = yStart + (
-  //       (yEnd - yStart) /
-  //       (width / segments) *
-  //       (coorX - x._gridLineItems[i].tx1)
-  //     );
-
-  //     console.log(`RES RES ${(pointPosition - (pointPosition - coorY))}`);
-
-  //     ctx.arc(
-  //       coorX,
-  //       pointPosition,
-  //       5,
-  //       angle * 0,
-  //       angle * 360,
-  //       false
-  //     );
-  //     ctx.fill();
-  //     ctx.stroke();
-  //   }
-  // }
-};
-
-const mousemoveChart = (chart, mousemove) => {
-  crosshairPoint(chart, mousemove);
-};
-
-function mousemoveChartHandler(mousemove) {
-  mousemoveChart(chartInstance, mousemove);
-};
-
 // Chart Helpers
 
 // eslint-disable-next-line no-nested-ternary
 const upVal = (ctx, color, gradient = false) => ctx.p0.parsed.y < ctx.p1.parsed.y ? (
   gradient ? (() => {
-    const grd = ctx.chart.ctx.createLinearGradient(0, ctx.p0.y / 2, 0, 0);
-    grd.addColorStop(0, '#2fec2f40');
-    grd.addColorStop(1, color);
+    const grd = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height - (ctx.chart.height * 0.05));
+    grd.addColorStop(0.5, color);
+    grd.addColorStop(1, '#2fec2f00');
     return grd;
   })() : color
 ) : undefined;
 // eslint-disable-next-line no-nested-ternary
 const downVal = (ctx, color, gradient = false) => ctx.p0.parsed.y > ctx.p1.parsed.y ? (
   gradient ? (() => {
-    const grd = ctx.chart.ctx.createLinearGradient(0, ctx.p0.y / 2, 0, 0);
-    grd.addColorStop(0, '#ff000040');
-    grd.addColorStop(1, color);
+    const grd = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height - (ctx.chart.height * 0.05));
+    grd.addColorStop(0.5, color);
+    grd.addColorStop(1, '#ff000000');
     return grd;
   })() : color
 ) : undefined;
 
 function chartDestroy() {
-  chartInstance.canvas.removeEventListener('mousemove', mousemoveChartHandler);
   chartInstance.destroy();
 };
 
@@ -306,20 +178,18 @@ function chartCreate() {
     datasets: [{
       data: fetchedData,
       borderColor: [],
-      borderWidth: 3,
-      pointRadius: 3,
-      pointHitRadius: 3,
-      pointHoverRadius: 3,
+      borderWidth: 2,
       //* MB set target value for draw red/green line on the chart? (for example yesterday latest price)
+      //* You can use context.chart.chartArea.(top/left/bottom/right) for x & y gradient point (start/end) colors
       fill: true,
       segment: {
-        borderColor: ctx => upVal(ctx, '#2FEC2F') || downVal(ctx, '#FF0000'),
-        // backgroundColor: ctx => upVal(ctx, '#2FEC2F', true) || downVal(ctx, '#FF0000', true),
+        borderColor: ctx => upVal(ctx, '#2fec2f') || downVal(ctx, '#ff0000'),
+        backgroundColor: ctx => upVal(ctx, '#2fec2f40', true) || downVal(ctx, '#ff000040', true),
       },
     }],
   };
 
-  // Setup up & down points
+  // Setup up & down point colors
   const dataSet = data.datasets[0];
   for (let i = 1; i < dataSet.data.length; i++) {
     if (dataSet.data[i].y > dataSet.data[i - 1].y) {
@@ -332,34 +202,22 @@ function chartCreate() {
   chartInstance = new Chart(contextChart, {
     type: 'line',
     data,
-    // plugins: [
-    //   {
-    //     id: 'beforeRenderHook',
-    //     beforeDraw(chart, args, options) {
-    //       if (chart.config.type !== 'line') return;
-
-    //       const { ctx } = chart;
-    //       const dataset = chart.config.data.datasets[0]; // Assuming only one dataset
-
-    //       const { data: dataOfSet } = dataset;
-    //       const borderColor = [];
-
-    //       for (let i = 0; i < dataOfSet.length - 1; i++) {
-    //         if (dataOfSet[i] < dataOfSet[i + 1]) {
-    //           borderColor.push('green'); // Set border color to green for uptrend
-    //         } else {
-    //           borderColor.push('red'); // Set border color to red for downtrend or flat
-    //         }
-    //       }
-
-    //       dataset.borderColor = borderColor;
-
-    //       chart.update();
-    //     },
-    //   }
-    // ],
     options: {
+      spanGaps: true,
       animations: false,
+      interaction: {
+        intersect: false,
+        mode: 'index',
+      },
+      elements: {
+        point: {
+          radius: 0,
+          hoverBackgroundColor: (ctx) => {
+            const { dataIndex } = ctx;
+            return data.datasets[0].borderColor[dataIndex];
+          },
+        },
+      },
       scales: {
         x: {
           type: 'time',
@@ -396,8 +254,8 @@ function chartCreate() {
             // unit: setAxisTimeUnit(),
             // minUnit: setAxisTimeUnit(),
             displayFormats: {
-              month: 'MM.dd.yyyy',
-              week: 'MM.dd.yyyy',
+              month: 'MMM yyyy',
+              week: 'dd MMM',
               day: 'd',
               hour: "hh:mm aaaaa'm'",
               minute: "hh:mm aaaaa'm'",
@@ -425,7 +283,7 @@ function chartCreate() {
             display: true,
             mirror: true,
             labelOffset: -11,
-            padding: -4,
+            padding: 0,
             color: '#fff',
             font: {
               // family: '',
@@ -433,17 +291,11 @@ function chartCreate() {
               color: '#fff',
               weight: 'normal',
               style: 'normal',
-              letterSpacing: 2
             }
           },
         }
       },
       plugins: {
-        // zoom: {
-        //   limits: {
-        //     x: { min: 'original', max: 'original', minRange: 60 * 1000 },
-        //   },
-        // },
         zoom: {
           pan: {
             enabled: true,
@@ -463,15 +315,58 @@ function chartCreate() {
           display: false
         },
         tooltip: {
+          enabled: true,
+          animations: false,
+          displayColors: false,
           callbacks: {
-            label: (context) => `$${Number(context.parsed.y).toPrecision(3)}`
-          }
+            label: () => null,
+            title: (chart) => {
+              const { raw: { x: date, y: price } } = chart[0];
+              const dateFormatted = format(date, 'MMM d yyyy').toLowerCase().split('').join('\u200A'.repeat(1));
+              const timeFormatted = format(date, "h:mm aaaaa'm'").toLowerCase().split('').join('\u200A'.repeat(1));
+              const priceFormatted = `$${price.replace('.', ',')}`.toLowerCase().split('').join('\u200A'.repeat(1));
+
+              return `${dateFormatted}\n${timeFormatted}\n${priceFormatted}`;
+            },
+          },
+          bodyAlign: 'center',
+          titleAlign: 'left',
+          titleMarginBottom: -0.5,
+          titleFont: {
+            size: 12,
+            weight: 'bold',
+            style: 'normal',
+          },
+          // yAlign: 'bottom',
+          // xAlign: 'center',
+          borderColor: (ctx) => {
+            const dataPoint = ctx.tooltip.dataPoints[0].dataIndex;
+            const dataset = ctx.tooltip.dataPoints[0].datasetIndex;
+
+            return ctx.tooltip.chart.data.datasets[dataset].borderColor[dataPoint];
+          },
+          borderWidth: 1,
+          backgroundColor: '#000',
+          padding: 7,
+          position: 'customTooltipPosition'
         },
       }
     },
   });
 
-  chartInstance.canvas.addEventListener('mousemove', mousemoveChartHandler);
+  Tooltip.positioners.customTooltipPosition = (items) => {
+    const position = Tooltip.positioners.average(items);
+    const positionOffsetY = 5;
+
+    if (!position) return false;
+
+    return {
+      x: position.x,
+      y: position.y - positionOffsetY,
+      xAlign: 'center',
+      yAlign: 'bottom'
+    }
+  };
 };
 
 export const init = async () => {
