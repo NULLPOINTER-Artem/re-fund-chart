@@ -2,6 +2,10 @@
  * Chart.js have bundle optimization, auto - this is not optimization (we import all of Chart.js)
  */
 import Chart from 'chart.js/auto';
+import zoomPlugin from 'chartjs-plugin-zoom';
+import 'chartjs-adapter-date-fns';
+
+Chart.register(zoomPlugin);
 
 const BACKEND_ENDPOINT = 'https://rfd-backend.vercel.app';
 
@@ -24,14 +28,21 @@ let noDataEl = null;
 let loader = null;
 let chartInstance = null;
 let selectedTimeFrame = '';
-const fetchedData = {
-  time: [],
-  data: []
+const setAxisTimeUnit = () => {
+  if (selectedTimeFrame === 'day') return 'hour';
+  if (selectedTimeFrame === 'week') return 'day';
+  if (selectedTimeFrame === 'month') return 'week';
+
+  return 'hour';
 };
-const resetFetchedData = () => {
-  fetchedData.data.splice(0, fetchedData.data.length);
-  fetchedData.time.splice(0, fetchedData.time.length);
-};
+/*
+  Type FetchedData = {
+    x: Date | string,
+    y: number | string
+  }
+*/
+let fetchedData = [];
+const resetFetchedData = () => fetchedData.splice(0, fetchedData.length);
 
 // FETCH DATA HANDLERS
 
@@ -79,20 +90,20 @@ const transformDataInChartData = (response = []) => {
     return;
   }
 
-  response.forEach((item) => {
-    // convert (from UTC) to locale date
-    const [date, time] = item.date.split(' ');
-    const price = item.price.toFixed(8);
+  resetFetchedData();
 
-    fetchedData.time.push(convertTimeTo12HourFormat(time));
-    fetchedData.data.push(price);
-  });
+  fetchedData = response.map((item) => ({
+    x: item.date,
+    y: item.price.toFixed(8)
+  }));
+
+  console.log('fetchedData');
+  console.dir(fetchedData);
 
   handlerChart();
 };
 const fetchChartData = async (days = 1) => {
   handlerLoading();
-  resetFetchedData();
   let response = null;
 
   try {
@@ -183,7 +194,7 @@ const crosshairPoint = (chart, mousemove) => {
   ctx.setLineDash([]);
 
   const angle = Math.PI / 180;
-  const segments = width / (fetchedData.time.length - 1);
+  const segments = width / (fetchedData.length - 1);
   const index = Math.floor((coorX - left) / segments);
   const yStart = y.getPixelForValue(data.datasets[0].data[index]);
   const yEnd = y.getPixelForValue(data.datasets[0].data[index + 1]);
@@ -292,29 +303,29 @@ function chartCreate() {
   const contextChart = chartWrapperEl.querySelector('#chart-price').getContext('2d');
 
   const data = {
-    labels: fetchedData.time,
     datasets: [{
-      data: fetchedData.data.map(Number),
+      data: fetchedData,
       borderColor: [],
       borderWidth: 3,
-      pointRadius: 0,
-      pointHitRadius: 0,
-      pointHoverRadius: 0,
+      pointRadius: 3,
+      pointHitRadius: 3,
+      pointHoverRadius: 3,
       //* MB set target value for draw red/green line on the chart? (for example yesterday latest price)
       fill: true,
       segment: {
         borderColor: ctx => upVal(ctx, '#2FEC2F') || downVal(ctx, '#FF0000'),
-        backgroundColor: ctx => upVal(ctx, '#2FEC2F', true) || downVal(ctx, '#FF0000', true),
+        // backgroundColor: ctx => upVal(ctx, '#2FEC2F', true) || downVal(ctx, '#FF0000', true),
       },
     }],
   };
 
   // Setup up & down points
-  for (let i = 1; i < data.datasets[0].data.length; i++) {
-    if (data.datasets[0].data[i] > data.datasets[0].data[i - 1]) {
-      data.datasets[0].borderColor.push('#2FEC2F');
+  const dataSet = data.datasets[0];
+  for (let i = 1; i < dataSet.data.length; i++) {
+    if (dataSet.data[i].y > dataSet.data[i - 1].y) {
+      dataSet.borderColor.push('#2FEC2F');
     } else {
-      data.datasets[0].borderColor.push('#FF0000');
+      dataSet.borderColor.push('#FF0000');
     }
   }
 
@@ -348,9 +359,10 @@ function chartCreate() {
     //   }
     // ],
     options: {
+      animations: false,
       scales: {
         x: {
-          // type: 'time',
+          type: 'time',
           position: 'bottom',
           grid: {
             display: false
@@ -368,17 +380,33 @@ function chartCreate() {
               size: 12,
               weight: 'normal',
               style: 'normal',
+            },
+            major: {
+              enabled: true,
             }
+            // callback: (val, i, ticks) => (
+            //   i < ticks.length - 1 ?
+            //     String(val)
+            //       .toLowerCase()
+            //       .split('').join('\u200A'.repeat(3))
+            //     : null
+            // ),
           },
-          // time: {
-          //   displayFormats: {
-          //     hour: 'HH:mm',
-          //     minute: 'HH:mm',
-          //     second: 'HH:mm:ss'
-          //   }
-          // }
+          time: {
+            // unit: setAxisTimeUnit(),
+            // minUnit: setAxisTimeUnit(),
+            displayFormats: {
+              month: 'MM.dd.yyyy',
+              week: 'MM.dd.yyyy',
+              day: 'd',
+              hour: "hh:mm aaaaa'm'",
+              minute: "hh:mm aaaaa'm'",
+              second: "hh:mm:ss aaaaa'm'",
+            },
+          },
         },
         y: {
+          position: 'left',
           grid: {
             color: '#ffffff1a',
             lineWidth: 1,
@@ -415,26 +443,22 @@ function chartCreate() {
         //   limits: {
         //     x: { min: 'original', max: 'original', minRange: 60 * 1000 },
         //   },
-        //   pan: {
-        //     enabled: true,
-        //     mode: 'x',
-        //     modifierKey: 'ctrl',
-        //     onPanComplete: startFetch
-        //   },
-        //   zoom: {
-        //     wheel: {
-        //       enabled: true,
-        //     },
-        //     drag: {
-        //       enabled: true,
-        //     },
-        //     pinch: {
-        //       enabled: true
-        //     },
-        //     mode: 'x',
-        //     onZoomComplete: startFetch
-        //   }
         // },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'xy',
+          },
+          zoom: {
+            mode: 'xy',
+            pinch: {
+              enabled: true,
+            },
+            wheel: {
+              enabled: true,
+            },
+          },
+        },
         legend: {
           display: false
         },
