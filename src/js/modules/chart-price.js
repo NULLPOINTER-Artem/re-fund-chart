@@ -16,6 +16,14 @@ let noDataEl = null;
 let loader = null;
 let chartInstance = null;
 let selectedTimeFrame = '';
+const displayTimeFormats = {
+  month: 'MMM yyyy',
+  week: 'dd MMM',
+  day: 'd',
+  hour: "h\u200A:\u200Amm aaaaa'm'",
+  minute: "h\u200A:\u200Amm aaaaa'm'",
+  second: "h\u200A:\u200Amm\u200A:\u200Ass aaaaa'm'",
+};
 /*
   Type FetchedData = {
     x: Date | string,
@@ -203,6 +211,9 @@ function chartCreate() {
     type: 'line',
     data,
     options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      aspectRatio: 1,
       spanGaps: true,
       animations: false,
       interaction: {
@@ -232,6 +243,7 @@ function chartCreate() {
             autoSkip: true,
             autoSkipPadding: 50,
             maxRotation: 0,
+            backdropPadding: 0,
             color: '#fff',
             font: {
               // family: '',
@@ -241,26 +253,12 @@ function chartCreate() {
             },
             major: {
               enabled: true,
-            }
-            // callback: (val, i, ticks) => (
-            //   i < ticks.length - 1 ?
-            //     String(val)
-            //       .toLowerCase()
-            //       .split('').join('\u200A'.repeat(3))
-            //     : null
-            // ),
+            },
+            padding: 10,
+            showLabelBackdrop: false,
           },
           time: {
-            // unit: setAxisTimeUnit(),
-            // minUnit: setAxisTimeUnit(),
-            displayFormats: {
-              month: 'MMM yyyy',
-              week: 'dd MMM',
-              day: 'd',
-              hour: "hh:mm aaaaa'm'",
-              minute: "hh:mm aaaaa'm'",
-              second: "hh:mm:ss aaaaa'm'",
-            },
+            displayFormats: displayTimeFormats,
           },
         },
         y: {
@@ -271,6 +269,7 @@ function chartCreate() {
           },
           border: {
             display: false,
+            width: 0,
           },
           ticks: {
             callback: (val, i, ticks) => (
@@ -283,6 +282,7 @@ function chartCreate() {
             display: true,
             mirror: true,
             labelOffset: -11,
+            backdropPadding: 0,
             padding: 0,
             color: '#fff',
             font: {
@@ -291,7 +291,7 @@ function chartCreate() {
               color: '#fff',
               weight: 'normal',
               style: 'normal',
-            }
+            },
           },
         }
       },
@@ -323,8 +323,8 @@ function chartCreate() {
             title: (chart) => {
               const { raw: { x: date, y: price } } = chart[0];
               const dateFormatted = format(date, 'MMM d yyyy').toLowerCase().split('').join('\u200A'.repeat(1));
-              const timeFormatted = format(date, "h:mm aaaaa'm'").toLowerCase().split('').join('\u200A'.repeat(1));
-              const priceFormatted = `$${price.replace('.', ',')}`.toLowerCase().split('').join('\u200A'.repeat(1));
+              const timeFormatted = format(date, "h\u200A:\u200Amm aaaaa'm'").toLowerCase().split('').join('\u200A'.repeat(1));
+              const priceFormatted = `$${price.replace('.', '\u200A,\u200A')}`.toLowerCase().split('').join('\u200A'.repeat(1));
 
               return `${dateFormatted}\n${timeFormatted}\n${priceFormatted}`;
             },
@@ -348,7 +348,7 @@ function chartCreate() {
           borderWidth: 1,
           backgroundColor: '#000',
           padding: 7,
-          position: 'customTooltipPosition'
+          position: 'customTooltipPosition',
         },
       }
     },
