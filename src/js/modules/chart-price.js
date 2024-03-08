@@ -10,6 +10,29 @@ Chart.register(zoomPlugin);
 
 const BACKEND_ENDPOINT = 'https://rfd-backend.vercel.app';
 
+// Styles
+const CSS_CLASS_ACTIVE = 'active';
+const GREEN_COLOR_RGBA = 'rgba(47, 236, 47, 1)';
+const RED_COLOR_RGBA = 'rgba(255, 0, 0, 1)';
+const changeAlphaColor = (color, alpha) => {
+  if (typeof color !== 'string' || color.includes('#')) return color;
+
+  const colorAlpha = color.split(',');
+
+  if (colorAlpha.length === 4) colorAlpha[colorAlpha.length - 1] = ` ${alpha})`;
+  else {
+    const [lastColorCode] = colorAlpha[colorAlpha.length - 1].trim().split(')');
+    colorAlpha[colorAlpha.length - 1] = ` ${lastColorCode}`;
+    colorAlpha.push(` ${alpha})`);
+  }
+
+  return colorAlpha.join(',');
+};
+
+let targetValue = 0;
+const setTargetValue = (data) => {
+  if (data && data.length) targetValue = Number(data[0].y);
+};
 let actionBarChart = null;
 let chartWrapperEl = null;
 let noDataEl = null;
@@ -37,9 +60,9 @@ const resetFetchedData = () => fetchedData.splice(0, fetchedData.length);
 
 const handlerNoData = () => {
   if (noDataEl) {
-    if (chartWrapperEl) chartWrapperEl.classList.remove('active');
-    if (loader) loader.classList.remove('active');
-    noDataEl.classList.add('active');
+    if (chartWrapperEl) chartWrapperEl.classList.remove(CSS_CLASS_ACTIVE);
+    if (loader) loader.classList.remove(CSS_CLASS_ACTIVE);
+    noDataEl.classList.add(CSS_CLASS_ACTIVE);
 
     if (actionBarChart && actionBarChart.classList.contains('disabled')) {
       actionBarChart.classList.remove('disabled');
@@ -49,25 +72,25 @@ const handlerNoData = () => {
 
 const handlerLoading = (show = true) => {
   if (loader) {
-    if (chartWrapperEl) chartWrapperEl.classList.remove('active');
-    if (noDataEl) noDataEl.classList.remove('active');
+    if (chartWrapperEl) chartWrapperEl.classList.remove(CSS_CLASS_ACTIVE);
+    if (noDataEl) noDataEl.classList.remove(CSS_CLASS_ACTIVE);
 
     if (show) {
       actionBarChart.classList.add('disabled');
-      loader.classList.add('active');
+      loader.classList.add(CSS_CLASS_ACTIVE);
     }
     else {
       actionBarChart.classList.remove('disabled');
-      loader.classList.remove('active');
+      loader.classList.remove(CSS_CLASS_ACTIVE);
     }
   }
 };
 
 const handlerChart = () => {
   if (chartWrapperEl) {
-    if (noDataEl) noDataEl.classList.remove('active');
-    if (loader) loader.classList.remove('active');
-    chartWrapperEl.classList.add('active');
+    if (noDataEl) noDataEl.classList.remove(CSS_CLASS_ACTIVE);
+    if (loader) loader.classList.remove(CSS_CLASS_ACTIVE);
+    chartWrapperEl.classList.add(CSS_CLASS_ACTIVE);
   }
 };
 
@@ -82,10 +105,11 @@ const transformDataInChartData = (response = []) => {
   resetFetchedData();
 
   fetchedData = response.map((item) => ({
-    x: item.date,
-    y: item.price.toFixed(8)
+    x: Date.parse(item.date),
+    y: +item.price.toFixed(8)
   }));
 
+  setTargetValue(fetchedData);
   handlerChart();
 };
 const fetchChartData = async (days = 1) => {
@@ -138,8 +162,8 @@ async function handleActionBar(event) {
   const allActionBtn = [].slice.call(this.querySelectorAll('button[data-type=action]'));
 
   allActionBtn.forEach((actionBtn) => {
-    if (actionBtn.dataset.action === selectedTimeFrame) actionBtn.classList.add('active');
-    else actionBtn.classList.remove('active');
+    if (actionBtn.dataset.action === selectedTimeFrame) actionBtn.classList.add(CSS_CLASS_ACTIVE);
+    else actionBtn.classList.remove(CSS_CLASS_ACTIVE);
   });
 
   // fetch data
@@ -151,61 +175,150 @@ async function handleActionBar(event) {
     chartDestroy();
     // eslint-disable-next-line no-use-before-define
     chartCreate();
+  } else {
+    // eslint-disable-next-line no-use-before-define
+    chartCreate();
   }
 }
 
 // Chart Helpers
 
-// eslint-disable-next-line no-nested-ternary
-const upVal = (ctx, color, gradient = false) => ctx.p0.parsed.y < ctx.p1.parsed.y ? (
-  gradient ? (() => {
-    const grd = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height - (ctx.chart.height * 0.05));
-    grd.addColorStop(0.5, color);
-    grd.addColorStop(1, '#2fec2f00');
-    return grd;
-  })() : color
-) : undefined;
-// eslint-disable-next-line no-nested-ternary
-const downVal = (ctx, color, gradient = false) => ctx.p0.parsed.y > ctx.p1.parsed.y ? (
-  gradient ? (() => {
-    const grd = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height - (ctx.chart.height * 0.05));
-    grd.addColorStop(0.5, color);
-    grd.addColorStop(1, '#ff000000');
-    return grd;
-  })() : color
-) : undefined;
-
 function chartDestroy() {
   chartInstance.destroy();
 };
 
+const borderGradient = (ctx, chartArea, data, scales) => {
+  const theData = data.datasets[0].data;
+  if (!theData.length) return null;
+
+  const {
+    left, right,
+    top, bottom,
+    width, height
+  } = chartArea;
+  const { x, y } = scales;
+  const gradientBorder = ctx.createLinearGradient(0, 0, 0, bottom);
+
+  let shift = y.getPixelForValue(theData[0].y) / bottom;
+  if (shift > 1) shift = 1;
+  else if (shift < 0) shift = 0;
+
+  gradientBorder.addColorStop(0, GREEN_COLOR_RGBA);
+  gradientBorder.addColorStop(shift, GREEN_COLOR_RGBA);
+  gradientBorder.addColorStop(shift, RED_COLOR_RGBA);
+  gradientBorder.addColorStop(1, RED_COLOR_RGBA);
+
+  return gradientBorder;
+};
+const belowGradient = (ctx, chartArea, data, scales) => {
+  const theData = data.datasets[0].data;
+  if (!theData.length) return null;
+
+  const {
+    left, right,
+    top, bottom,
+    width, height
+  } = chartArea;
+  const { x, y } = scales;
+  const gradientBackground = ctx.createLinearGradient(
+    0, y.getPixelForValue(theData[0].y),
+    0, bottom
+  );
+
+  gradientBackground.addColorStop(0, changeAlphaColor(RED_COLOR_RGBA, 0));
+  gradientBackground.addColorStop(1, changeAlphaColor(RED_COLOR_RGBA, 0.25));
+
+  return gradientBackground;
+};
+const aboveGradient = (ctx, chartArea, data, scales) => {
+  const theData = data.datasets[0].data;
+  if (!theData.length) return null;
+
+  const {
+    left, right,
+    top, bottom,
+    width, height
+  } = chartArea;
+  const { x, y } = scales;
+  const gradientBackground = ctx.createLinearGradient(
+    0, y.getPixelForValue(theData[0].y),
+    0, top
+  );
+
+  gradientBackground.addColorStop(0, changeAlphaColor(GREEN_COLOR_RGBA, 0));
+  gradientBackground.addColorStop(1, changeAlphaColor(GREEN_COLOR_RGBA, 0.25));
+
+  return gradientBackground;
+};
+
 function chartCreate() {
   const contextChart = chartWrapperEl.querySelector('#chart-price').getContext('2d');
+  let previousTooltipBorderColor = '';
+  let previousPointBackgroundColor = '';
 
   const data = {
     datasets: [{
       data: fetchedData,
-      borderColor: [],
+      borderColor(context) {
+        const { chart } = context;
+        const {
+          ctx,
+          chartArea,
+          data: ctxData,
+          scales
+        } = chart;
+
+        // case of chart initialization
+        if (!chartArea) return null;
+
+        return borderGradient(ctx, chartArea, ctxData, scales);
+      },
       borderWidth: 2,
-      //* MB set target value for draw red/green line on the chart? (for example yesterday latest price)
-      //* You can use context.chart.chartArea.(top/left/bottom/right) for x & y gradient point (start/end) colors
-      fill: true,
-      segment: {
-        borderColor: ctx => upVal(ctx, '#2fec2f') || downVal(ctx, '#ff0000'),
-        backgroundColor: ctx => upVal(ctx, '#2fec2f40', true) || downVal(ctx, '#ff000040', true),
+      fill: {
+        target: {
+          value: targetValue,
+        },
+        below(context) {
+          const { chart } = context;
+          const {
+            ctx,
+            chartArea,
+            data: ctxData,
+            scales
+          } = chart;
+
+          // case of chart initialization
+          if (!chartArea) return null;
+
+          return belowGradient(ctx, chartArea, ctxData, scales);
+        },
+        above(context) {
+          const { chart } = context;
+          const {
+            ctx,
+            chartArea,
+            data: ctxData,
+            scales
+          } = chart;
+
+          // case of chart initialization
+          if (!chartArea) return null;
+
+          return aboveGradient(ctx, chartArea, ctxData, scales);
+        },
       },
     }],
   };
 
-  // Setup up & down point colors
-  const dataSet = data.datasets[0];
-  for (let i = 1; i < dataSet.data.length; i++) {
-    if (dataSet.data[i].y > dataSet.data[i - 1].y) {
-      dataSet.borderColor.push('#2FEC2F');
-    } else {
-      dataSet.borderColor.push('#FF0000');
-    }
-  }
+  const XextraSpace = 0.01;
+  const YextraSpace = 0.1;
+  const Xmin = Math.min(...fetchedData.map((item) => item.x));
+  const Xmax = Math.max(...fetchedData.map((item) => item.x));
+  const Ymin = Math.min(...fetchedData.map((item) => item.y));
+  const Ymax = Math.max(...fetchedData.map((item) => item.y));
+
+  const xExtraZoomSpace = (Xmax - Xmin) * XextraSpace;
+  const yExtraZoomSpace = (Ymax - Ymin) * YextraSpace;
 
   chartInstance = new Chart(contextChart, {
     type: 'line',
@@ -216,6 +329,9 @@ function chartCreate() {
       aspectRatio: 1,
       spanGaps: true,
       animations: false,
+      layout: {
+        autoPadding: true
+      },
       interaction: {
         intersect: false,
         mode: 'index',
@@ -223,9 +339,16 @@ function chartCreate() {
       elements: {
         point: {
           radius: 0,
+          hoverBorderWidth: 2,
+          hoverRadius: 5,
           hoverBackgroundColor: (ctx) => {
             const { dataIndex } = ctx;
-            return data.datasets[0].borderColor[dataIndex];
+            const valuePoint = +data.datasets[0].data[dataIndex].y;
+
+            if (valuePoint > targetValue) previousPointBackgroundColor = changeAlphaColor(GREEN_COLOR_RGBA, 0.5);
+            if (valuePoint < targetValue) previousPointBackgroundColor = changeAlphaColor(RED_COLOR_RGBA, 0.5);
+
+            return previousPointBackgroundColor;
           },
         },
       },
@@ -234,7 +357,7 @@ function chartCreate() {
           type: 'time',
           position: 'bottom',
           grid: {
-            display: false
+            display: false,
           },
           border: {
             display: false
@@ -258,6 +381,7 @@ function chartCreate() {
             showLabelBackdrop: false,
           },
           time: {
+            minUnit: 'minute',
             displayFormats: displayTimeFormats,
           },
         },
@@ -297,17 +421,30 @@ function chartCreate() {
       },
       plugins: {
         zoom: {
+          limits: {
+            x: {
+              min: Xmin - xExtraZoomSpace,
+              max: Xmax + xExtraZoomSpace,
+            },
+            y: {
+              min: Ymin - yExtraZoomSpace,
+              max: Ymax + yExtraZoomSpace,
+            },
+          },
           pan: {
             enabled: true,
-            mode: 'xy',
+            mode: 'x',
+            scaleMode: 'x',
           },
           zoom: {
-            mode: 'xy',
+            mode: 'x',
+            scaleMode: 'x',
             pinch: {
               enabled: true,
             },
             wheel: {
               enabled: true,
+              speed: 0.05,
             },
           },
         },
@@ -324,7 +461,7 @@ function chartCreate() {
               const { raw: { x: date, y: price } } = chart[0];
               const dateFormatted = format(date, 'MMM d yyyy').toLowerCase().split('').join('\u200A'.repeat(1));
               const timeFormatted = format(date, "h\u200A:\u200Amm aaaaa'm'").toLowerCase().split('').join('\u200A'.repeat(1));
-              const priceFormatted = `$${price.replace('.', '\u200A,\u200A')}`.toLowerCase().split('').join('\u200A'.repeat(1));
+              const priceFormatted = `$${String(price).replace('.', '\u200A,\u200A')}`.toLowerCase().split('').join('\u200A'.repeat(1));
 
               return `${dateFormatted}\n${timeFormatted}\n${priceFormatted}`;
             },
@@ -337,13 +474,15 @@ function chartCreate() {
             weight: 'bold',
             style: 'normal',
           },
-          // yAlign: 'bottom',
-          // xAlign: 'center',
           borderColor: (ctx) => {
             const dataPoint = ctx.tooltip.dataPoints[0].dataIndex;
             const dataset = ctx.tooltip.dataPoints[0].datasetIndex;
+            const valuePoint = +ctx.tooltip.chart.data.datasets[dataset].data[dataPoint].y;
 
-            return ctx.tooltip.chart.data.datasets[dataset].borderColor[dataPoint];
+            if (valuePoint > targetValue) previousTooltipBorderColor = GREEN_COLOR_RGBA;
+            if (valuePoint < targetValue) previousTooltipBorderColor = RED_COLOR_RGBA;
+
+            return previousTooltipBorderColor;
           },
           borderWidth: 1,
           backgroundColor: '#000',
@@ -381,10 +520,8 @@ export const init = async () => {
   // default time frame == 'day'
   btnDay.dispatchEvent(new Event('click', {
     bubbles: true,
-    cancelable: true
+    cancelable: true,
   }));
-
-  chartCreate();
 
   return () => {
     chartDestroy();
