@@ -9,11 +9,13 @@ import 'chartjs-adapter-date-fns';
 Chart.register(zoomPlugin);
 
 const BACKEND_ENDPOINT = 'https://rfd-backend.vercel.app';
+const MAX_ZOOM_LEVEL = 10;
 
 // Styles
 const CSS_CLASS_ACTIVE = 'active';
 const GREEN_COLOR_RGBA = 'rgba(47, 236, 47, 1)';
 const RED_COLOR_RGBA = 'rgba(255, 0, 0, 1)';
+const GRAY_COLOR_RGBA = 'rgba(64, 64, 64, 1)';
 const changeAlphaColor = (color, alpha) => {
   if (typeof color !== 'string' || color.includes('#')) return color;
 
@@ -311,7 +313,7 @@ function chartCreate() {
   };
 
   const XextraSpace = 0.01;
-  const YextraSpace = 0.1;
+  const YextraSpace = 0.2;
   const Xmin = Math.min(...fetchedData.map((item) => item.x));
   const Xmax = Math.max(...fetchedData.map((item) => item.x));
   const Ymin = Math.min(...fetchedData.map((item) => item.y));
@@ -356,6 +358,8 @@ function chartCreate() {
         x: {
           type: 'time',
           position: 'bottom',
+          min: Xmin,
+          max: Xmax,
           grid: {
             display: false,
           },
@@ -387,8 +391,10 @@ function chartCreate() {
         },
         y: {
           position: 'left',
+          min: Ymin,
+          max: Ymax,
           grid: {
-            color: '#ffffff1a',
+            color: GRAY_COLOR_RGBA,
             lineWidth: 1,
           },
           border: {
@@ -433,7 +439,7 @@ function chartCreate() {
           },
           pan: {
             enabled: true,
-            mode: 'x',
+            mode: 'xy',
             scaleMode: 'x',
           },
           zoom: {
@@ -445,6 +451,10 @@ function chartCreate() {
             wheel: {
               enabled: true,
               speed: 0.05,
+            },
+            onZoom(context) {
+              const zoomLevel = context.chart.getZoomLevel();
+              if (zoomLevel >= MAX_ZOOM_LEVEL) context.chart.zoom(0.99);
             },
           },
         },
@@ -495,7 +505,7 @@ function chartCreate() {
 
   Tooltip.positioners.customTooltipPosition = (items) => {
     const position = Tooltip.positioners.average(items);
-    const positionOffsetY = 5;
+    const positionOffsetY = 10;
 
     if (!position) return false;
 
