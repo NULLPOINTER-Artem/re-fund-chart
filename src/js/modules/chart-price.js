@@ -8,6 +8,15 @@ import 'chartjs-adapter-date-fns';
 
 Chart.register(zoomPlugin);
 
+// TODO: (*****) Pan x & y axis for manipulate with step-size
+/*
+  https://www.youtube.com/watch?v=5SxDxAUPIMk&list=PLc1g3vwxhg1UlBvTOSZ3VJUjC_s6S2cMD&index=30
+  We can create smth similar to this bottom-bar in this video but using mouse drag instead grab-time action
+  The coin-market use several charts at once for it, I no know, how to do it, I have to find my own solution
+*/
+// TODO: (***) (Equal) -> find intersection points for fill them by correct gradient color
+// TODO: (****) Increase performance on mobile
+
 const BACKEND_ENDPOINT = 'https://rfd-backend.vercel.app';
 const MAX_ZOOM_LEVEL = 10;
 
@@ -404,7 +413,7 @@ function chartCreate() {
           ticks: {
             callback: (val, i, ticks) => (
               i < ticks.length - 1 ?
-                String(Number(val).toPrecision(3))
+                Number(val).toFixed(8)
                   .toLowerCase()
                   .split('').join('\u200A'.repeat(1))
                 : null
@@ -454,7 +463,7 @@ function chartCreate() {
             },
             onZoom(context) {
               const zoomLevel = context.chart.getZoomLevel();
-              if (zoomLevel >= MAX_ZOOM_LEVEL) context.chart.zoom(0.99);
+              if (zoomLevel >= MAX_ZOOM_LEVEL) context.chart.zoom(0.999);
             },
           },
         },
@@ -471,7 +480,7 @@ function chartCreate() {
               const { raw: { x: date, y: price } } = chart[0];
               const dateFormatted = format(date, 'MMM d yyyy').toLowerCase().split('').join('\u200A'.repeat(1));
               const timeFormatted = format(date, "h\u200A:\u200Amm aaaaa'm'").toLowerCase().split('').join('\u200A'.repeat(1));
-              const priceFormatted = `$${String(price).replace('.', '\u200A,\u200A')}`.toLowerCase().split('').join('\u200A'.repeat(1));
+              const priceFormatted = `$${Number(price).toFixed(8).replace('.', '\u200A,\u200A')}`.toLowerCase().split('').join('\u200A'.repeat(1));
 
               return `${dateFormatted}\n${timeFormatted}\n${priceFormatted}`;
             },
@@ -516,6 +525,31 @@ function chartCreate() {
       yAlign: 'bottom'
     }
   };
+
+  // let startX = 0;
+  // let endX = 0;
+
+  // chartInstance.canvas.addEventListener('mousedown', (event) => {
+  //   startX = event.clientX;
+  // });
+
+  // chartInstance.canvas.addEventListener('mouseup', (event) => {
+  //   endX = event.clientX;
+
+  //   const diff = endX - startX;
+
+  //   if (diff > 0) {
+  //     // Increase step size
+  //     chartInstance.options.scales.x.ticks.stepSize++;
+  //     chartInstance.options.scales.y.ticks.stepSize++;
+  //   } else if (diff < 0) {
+  //     // Decrease step size, ensuring it's greater than 0
+  //     chartInstance.options.scales.x.ticks.stepSize = Math.max(1, chartInstance.options.scales.x.ticks.stepSize - 1);
+  //     chartInstance.options.scales.y.ticks.stepSize = Math.max(1, chartInstance.options.scales.y.ticks.stepSize - 1);
+  //   }
+
+  //   chartInstance.update();
+  // });
 };
 
 export const init = async () => {
