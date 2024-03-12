@@ -47,12 +47,19 @@ const setTargetValue = (data) => {
 let actionBarChart = null;
 let chartWrapperEl = null;
 
-// y-axis element for mouse-drag manipulation with step size
+// Y-axis element for mouse-drag manipulation with step size
 let yAxisEl = null;
 // event handlers
 let yMouseDownClb = null;
 let yMouseUpClb = null;
 let yMouseMoveClb = null;
+
+// X-axis element for mouse-drag manipulation with step size
+let xAxisEl = null;
+// event handlers
+let xMouseDownClb = null;
+let xMouseUpClb = null;
+let xMouseMoveClb = null;
 
 let noDataEl = null;
 let loader = null;
@@ -375,6 +382,8 @@ function chartCreate() {
         x: {
           type: 'time',
           position: 'bottom',
+          suggestedMin: Xmin,
+          suggestedMax: Xmax,
           min: Xmin,
           max: Xmax,
           grid: {
@@ -391,8 +400,8 @@ function chartCreate() {
             color: '#fff',
             font: {
               // family: '',
-              size: 12,
-              weight: 'normal',
+              size: 14,
+              weight: 'bold',
               style: 'normal',
             },
             major: {
@@ -408,6 +417,8 @@ function chartCreate() {
         },
         y: {
           position: 'left',
+          suggestedMin: Ymin,
+          suggestedMax: Ymax,
           min: Ymin,
           max: Ymax,
           grid: {
@@ -428,15 +439,16 @@ function chartCreate() {
             ),
             display: true,
             mirror: true,
+            backdropColor: '#000',
             labelOffset: -11,
             backdropPadding: 0,
             padding: 0,
             color: '#fff',
+            z: 2,
             font: {
               // family: '',
-              size: 12,
-              color: '#fff',
-              weight: 'normal',
+              size: 14,
+              weight: 'bold',
               style: 'normal',
             },
           },
@@ -471,7 +483,7 @@ function chartCreate() {
             },
             onZoom(context) {
               const zoomLevel = context.chart.getZoomLevel();
-              if (zoomLevel >= MAX_ZOOM_LEVEL) context.chart.zoom(0.999);
+              if (zoomLevel >= MAX_ZOOM_LEVEL) context.chart.zoom(0.8);
             },
           },
         },
@@ -556,21 +568,23 @@ function chartCreate() {
 
     yMouseMoveClb = (event) => {
       const { clientY } = event.changedTouches ? event.changedTouches[0] : event;
-      const yAddZoomSpace = (+chartInstance.options.scales.y.max - +chartInstance.options.scales.y.min) * YAddSpace;
+      const scaleMinY = +chartInstance.options.scales.y.min;
+      const scaleMaxY = +chartInstance.options.scales.y.max;
+      const yAddZoomSpace = (scaleMaxY - scaleMinY) * YAddSpace;
 
       if (clientY < previousClientY) {
         // Increase period of Y-axis (min/max)    
-        chartInstance.options.scales.y.min = +chartInstance.options.scales.y.min + yAddZoomSpace;
-        chartInstance.options.scales.y.max = +chartInstance.options.scales.y.max - yAddZoomSpace;
+        chartInstance.options.scales.y.min = scaleMinY + yAddZoomSpace;
+        chartInstance.options.scales.y.max = scaleMaxY - yAddZoomSpace;
       } else if (
         clientY > previousClientY && (
-          +chartInstance.options.scales.y.min > 0 &&
-          +chartInstance.options.scales.y.max > 0
+          scaleMinY > 0 &&
+          scaleMaxY > 0
         )
       ) {
         // Decrease period of Y-axis (min/max)
-        chartInstance.options.scales.y.min = +chartInstance.options.scales.y.min - yAddZoomSpace;
-        chartInstance.options.scales.y.max = +chartInstance.options.scales.y.max + yAddZoomSpace;
+        chartInstance.options.scales.y.min = scaleMinY - yAddZoomSpace;
+        chartInstance.options.scales.y.max = scaleMaxY + yAddZoomSpace;
       }
 
       previousClientY = clientY;
@@ -582,15 +596,69 @@ function chartCreate() {
     document.addEventListener('mouseup', yMouseUpClb);
     document.addEventListener('touchend', yMouseUpClb);
   }
+
+  // Setup mouse-drag Y-axis board
+  let previousClientX = 0;
+  const XAddSpace = 0.01;
+
+  if (xAxisEl) {
+    xMouseDownClb = (event) => {
+      previousClientX = event.changedTouches ? event.changedTouches[0].clientX : event.clientX;
+
+      // init move event
+      document.addEventListener('mousemove', xMouseMoveClb);
+      document.addEventListener('touchmove', xMouseMoveClb);
+    };
+
+    xMouseUpClb = () => {
+      // remove move event
+      document.removeEventListener('mousemove', xMouseMoveClb);
+      document.removeEventListener('touchmove', xMouseMoveClb);
+    };
+
+    xMouseMoveClb = (event) => {
+      const { clientX } = event.changedTouches ? event.changedTouches[0] : event;
+      const { min: scaleMinX, max: scaleMaxX } = chartInstance.options.scales.x;
+      const xAddZoomSpace = (scaleMaxX - scaleMinX) * XAddSpace;
+
+      if (clientX < previousClientX) {
+        // Increase period of X-axis (min/max)    
+        chartInstance.options.scales.x.min = scaleMinX + xAddZoomSpace;
+        chartInstance.options.scales.x.max = scaleMaxX - xAddZoomSpace;
+      } else if (
+        clientX > previousClientX && (
+          scaleMinX > 0 &&
+          scaleMaxX > 0
+        )
+      ) {
+        // Decrease period of X-axis (min/max)
+        chartInstance.options.scales.x.min = scaleMinX - xAddZoomSpace;
+        chartInstance.options.scales.x.max = scaleMaxX + xAddZoomSpace;
+      }
+
+      previousClientX = clientX;
+      chartInstance.update('none');
+    };
+
+    xAxisEl.addEventListener('mousedown', xMouseDownClb);
+    xAxisEl.addEventListener('touchstart', xMouseDownClb);
+    document.addEventListener('mouseup', xMouseUpClb);
+    document.addEventListener('touchend', xMouseUpClb);
+  }
 };
 
 export const init = async () => {
   chartWrapperEl = document.querySelector('.chart__wrapper');
   noDataEl = document.querySelector('.chart__empty-text');
   loader = document.querySelector('.chart__loader');
+
+  // toolbar - time frames
   actionBarChart = document.querySelector('.chart__action-bar');
   const btnDay = document.querySelector('.chart__btn-day');
+
+  // X/Y-axis boards
   yAxisEl = document.querySelector('.chart__y-axis');
+  xAxisEl = document.querySelector('.chart__x-axis');
 
   if (actionBarChart) actionBarChart.addEventListener('click', handleActionBar);
 
@@ -609,6 +677,14 @@ export const init = async () => {
       document.addEventListener('mouseup', yMouseUpClb);
       document.addEventListener('touchend', yMouseUpClb);
       if (yMouseUpClb) yMouseUpClb(); // remove mouse/touch-move event listener
+    }
+
+    if (xAxisEl) {
+      xAxisEl.addEventListener('mousedown', xMouseDownClb);
+      xAxisEl.addEventListener('touchstart', xMouseDownClb);
+      document.addEventListener('mouseup', xMouseUpClb);
+      document.addEventListener('touchend', xMouseUpClb);
+      if (xMouseUpClb) xMouseUpClb(); // remove mouse/touch-move event listener
     }
   };
 };

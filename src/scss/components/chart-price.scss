@@ -21,14 +21,26 @@
       height: 370px;
     }
 
-    .chart__y-axis {
+    .chart__y-axis,
+    .chart__x-axis {
       position: absolute;
-      left: 0;
+      background: transparent;
+    }
+
+    .chart__y-axis {
+      cursor: ns-resize;
       top: 0;
+      left: 0;
       height: 88%;
       width: 80px;
-      background: transparent;
-      cursor: ns-resize;
+    }
+
+    .chart__x-axis {
+      cursor: ew-resize;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 35px;
     }
   }
 }
