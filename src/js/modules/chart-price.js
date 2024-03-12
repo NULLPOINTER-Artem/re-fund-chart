@@ -46,6 +46,14 @@ const setTargetValue = (data) => {
 };
 let actionBarChart = null;
 let chartWrapperEl = null;
+
+// y-axis element for mouse-drag manipulation with step size
+let yAxisEl = null;
+// event handlers
+let yMouseDownClb = null;
+let yMouseUpClb = null;
+let yMouseMoveClb = null;
+
 let noDataEl = null;
 let loader = null;
 let chartInstance = null;
@@ -321,7 +329,7 @@ function chartCreate() {
     }],
   };
 
-  const XextraSpace = 0.01;
+  const XextraSpace = 0.05;
   const YextraSpace = 0.2;
   const Xmin = Math.min(...fetchedData.map((item) => item.x));
   const Xmax = Math.max(...fetchedData.map((item) => item.x));
@@ -512,6 +520,7 @@ function chartCreate() {
     },
   });
 
+  // Custom tooltip position
   Tooltip.positioners.customTooltipPosition = (items) => {
     const position = Tooltip.positioners.average(items);
     const positionOffsetY = 10;
@@ -526,30 +535,53 @@ function chartCreate() {
     }
   };
 
-  // let startX = 0;
-  // let endX = 0;
+  // Setup mouse-drag Y-axis board
+  let previousClientY = 0;
+  const YAddSpace = 0.02;
 
-  // chartInstance.canvas.addEventListener('mousedown', (event) => {
-  //   startX = event.clientX;
-  // });
+  if (yAxisEl) {
+    yMouseDownClb = (event) => {
+      previousClientY = event.changedTouches ? event.changedTouches[0].clientY : event.clientY;
 
-  // chartInstance.canvas.addEventListener('mouseup', (event) => {
-  //   endX = event.clientX;
+      // init move event
+      document.addEventListener('mousemove', yMouseMoveClb);
+      document.addEventListener('touchmove', yMouseMoveClb);
+    };
 
-  //   const diff = endX - startX;
+    yMouseUpClb = () => {
+      // remove move event
+      document.removeEventListener('mousemove', yMouseMoveClb);
+      document.removeEventListener('touchmove', yMouseMoveClb);
+    };
 
-  //   if (diff > 0) {
-  //     // Increase step size
-  //     chartInstance.options.scales.x.ticks.stepSize++;
-  //     chartInstance.options.scales.y.ticks.stepSize++;
-  //   } else if (diff < 0) {
-  //     // Decrease step size, ensuring it's greater than 0
-  //     chartInstance.options.scales.x.ticks.stepSize = Math.max(1, chartInstance.options.scales.x.ticks.stepSize - 1);
-  //     chartInstance.options.scales.y.ticks.stepSize = Math.max(1, chartInstance.options.scales.y.ticks.stepSize - 1);
-  //   }
+    yMouseMoveClb = (event) => {
+      const { clientY } = event.changedTouches ? event.changedTouches[0] : event;
+      const yAddZoomSpace = (+chartInstance.options.scales.y.max - +chartInstance.options.scales.y.min) * YAddSpace;
 
-  //   chartInstance.update();
-  // });
+      if (clientY < previousClientY) {
+        // Increase period of Y-axis (min/max)    
+        chartInstance.options.scales.y.min = +chartInstance.options.scales.y.min + yAddZoomSpace;
+        chartInstance.options.scales.y.max = +chartInstance.options.scales.y.max - yAddZoomSpace;
+      } else if (
+        clientY > previousClientY && (
+          +chartInstance.options.scales.y.min > 0 &&
+          +chartInstance.options.scales.y.max > 0
+        )
+      ) {
+        // Decrease period of Y-axis (min/max)
+        chartInstance.options.scales.y.min = +chartInstance.options.scales.y.min - yAddZoomSpace;
+        chartInstance.options.scales.y.max = +chartInstance.options.scales.y.max + yAddZoomSpace;
+      }
+
+      previousClientY = clientY;
+      chartInstance.update('none');
+    };
+
+    yAxisEl.addEventListener('mousedown', yMouseDownClb);
+    yAxisEl.addEventListener('touchstart', yMouseDownClb);
+    document.addEventListener('mouseup', yMouseUpClb);
+    document.addEventListener('touchend', yMouseUpClb);
+  }
 };
 
 export const init = async () => {
@@ -558,6 +590,7 @@ export const init = async () => {
   loader = document.querySelector('.chart__loader');
   actionBarChart = document.querySelector('.chart__action-bar');
   const btnDay = document.querySelector('.chart__btn-day');
+  yAxisEl = document.querySelector('.chart__y-axis');
 
   if (actionBarChart) actionBarChart.addEventListener('click', handleActionBar);
 
@@ -569,5 +602,13 @@ export const init = async () => {
 
   return () => {
     chartDestroy();
+
+    if (yAxisEl) {
+      yAxisEl.addEventListener('mousedown', yMouseDownClb);
+      yAxisEl.addEventListener('touchstart', yMouseDownClb);
+      document.addEventListener('mouseup', yMouseUpClb);
+      document.addEventListener('touchend', yMouseUpClb);
+      if (yMouseUpClb) yMouseUpClb(); // remove mouse/touch-move event listener
+    }
   };
 };

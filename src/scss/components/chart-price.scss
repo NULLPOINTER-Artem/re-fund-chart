@@ -20,6 +20,16 @@
     @include media("sm") {
       height: 370px;
     }
+
+    .chart__y-axis {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 88%;
+      width: 80px;
+      background: transparent;
+      cursor: ns-resize;
+    }
   }
 }
 
