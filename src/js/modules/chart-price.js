@@ -577,10 +577,10 @@ function chartCreate() {
 
       // init move event
       document.addEventListener('mousemove', yMouseMoveClb, {
-        passive: true,
+        passive: false,
       });
       document.addEventListener('touchmove', yMouseMoveClb, {
-        passive: true,
+        passive: false,
       });
     };
 
@@ -591,6 +591,7 @@ function chartCreate() {
     };
 
     yMouseMoveClb = (event) => {
+      event.preventDefault();
       const { clientY } = event.changedTouches ? event.changedTouches[0] : event;
       const scaleMinY = +chartInstance.options.scales.y.min;
       const scaleMaxY = +chartInstance.options.scales.y.max;
@@ -618,16 +619,16 @@ function chartCreate() {
     };
 
     yAxisEl.addEventListener('mousedown', yMouseDownClb, {
-      passive: true,
+      passive: false,
     });
     yAxisEl.addEventListener('touchstart', yMouseDownClb, {
-      passive: true,
+      passive: false,
     });
     document.addEventListener('mouseup', yMouseUpClb, {
-      passive: true,
+      passive: false,
     });
     document.addEventListener('touchend', yMouseUpClb, {
-      passive: true,
+      passive: false,
     });
   }
 
@@ -641,10 +642,10 @@ function chartCreate() {
 
       // init move event
       document.addEventListener('mousemove', xMouseMoveClb, {
-        passive: true,
+        passive: false,
       });
       document.addEventListener('touchmove', xMouseMoveClb, {
-        passive: true,
+        passive: false,
       });
     };
 
@@ -655,6 +656,7 @@ function chartCreate() {
     };
 
     xMouseMoveClb = (event) => {
+      event.preventDefault();
       const { clientX } = event.changedTouches ? event.changedTouches[0] : event;
       const { min: scaleMinX, max: scaleMaxX } = chartInstance.options.scales.x;
       const xAddZoomSpace = (scaleMaxX - scaleMinX) * XAddSpace;
@@ -681,16 +683,16 @@ function chartCreate() {
     };
 
     xAxisEl.addEventListener('mousedown', xMouseDownClb, {
-      passive: true,
+      passive: false,
     });
     xAxisEl.addEventListener('touchstart', xMouseDownClb, {
-      passive: true,
+      passive: false,
     });
     document.addEventListener('mouseup', xMouseUpClb, {
-      passive: true,
+      passive: false,
     });
     document.addEventListener('touchend', xMouseUpClb, {
-      passive: true,
+      passive: false,
     });
   }
 };
