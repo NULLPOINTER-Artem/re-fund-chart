@@ -8,19 +8,16 @@ import 'chartjs-adapter-date-fns';
 
 Chart.register(zoomPlugin);
 
-// TODO: (*****) Pan x & y axis for manipulate with step-size
-/*
-  https://www.youtube.com/watch?v=5SxDxAUPIMk&list=PLc1g3vwxhg1UlBvTOSZ3VJUjC_s6S2cMD&index=30
-  We can create smth similar to this bottom-bar in this video but using mouse drag instead grab-time action
-  The coin-market use several charts at once for it, I no know, how to do it, I have to find my own solution
-*/
 // TODO: (***) (Equal) -> find intersection points for fill them by correct gradient color
 // TODO: (****) Increase performance on mobile
 
-const BACKEND_ENDPOINT = 'https://rfd-backend.vercel.app';
-const MAX_ZOOM_LEVEL = 10;
+// CONSTANTS
 
-// Styles
+const SPACE_UNICODE = '\u200A';
+const BACKEND_ENDPOINT = 'https://rfd-backend.vercel.app';
+
+// STYLES
+
 const CSS_CLASS_ACTIVE = 'active';
 const GREEN_COLOR_RGBA = 'rgba(47, 236, 47, 1)';
 const RED_COLOR_RGBA = 'rgba(255, 0, 0, 1)';
@@ -39,6 +36,19 @@ const changeAlphaColor = (color, alpha) => {
 
   return colorAlpha.join(',');
 };
+
+// UTILS/HELPERS
+
+const getPixelForText = (str, fontSize = 14, fontFamily = 'Arial') => {
+  const canvasForText = document.createElement('canvas');
+  const ctx = canvasForText.getContext('2d');
+
+  ctx.font = `${fontSize}px ${fontFamily}`;
+  return Math.round(ctx.measureText(str).width);
+};
+const setLetterSpacingForText = (str, letterSpacingInPx) => str.split('').join(SPACE_UNICODE.repeat(letterSpacingInPx));
+
+// MAIN VARS
 
 let targetValue = 0;
 const setTargetValue = (data) => {
@@ -346,6 +356,20 @@ function chartCreate() {
   const xExtraZoomSpace = (Xmax - Xmin) * XextraSpace;
   const yExtraZoomSpace = (Ymax - Ymin) * YextraSpace;
 
+  const yAxisFontSettings = {
+    // family: '',
+    size: 12,
+    weight: 'bold',
+    style: 'normal',
+  };
+  const xAxisFontSettings = {
+    // family: '',
+    size: 12,
+    weight: 'bold',
+    style: 'normal',
+  };
+  const PADDING_X_AXIS = 10;
+
   chartInstance = new Chart(contextChart, {
     type: 'line',
     data,
@@ -398,23 +422,18 @@ function chartCreate() {
           },
           ticks: {
             align: 'inner',
-            crossAlign: 'center',
+            crossAlign: 'near',
             autoSkip: true,
             autoSkipPadding: 50,
             maxRotation: 0,
             minRotation: 0,
             maxTicksLimit: 9,
             color: '#fff',
-            font: {
-              // family: '',
-              size: 12,
-              weight: 'bold',
-              style: 'normal',
-            },
+            font: xAxisFontSettings,
             major: {
               enabled: true,
             },
-            padding: 10,
+            padding: PADDING_X_AXIS,
             backdropPadding: 0,
             showLabelBackdrop: false,
             source: 'auto',
@@ -424,6 +443,9 @@ function chartCreate() {
             minUnit: 'minute',
             displayFormats: displayTimeFormats,
           },
+          afterFit(scaleInstance) {
+            if (xAxisEl) xAxisEl.style.height = `${Math.floor(scaleInstance.height) - PADDING_X_AXIS}px`;
+          },
         },
         y: {
           alignToPixels: true,
@@ -432,9 +454,7 @@ function chartCreate() {
           ticks: {
             callback: (val, i, ticks) => (
               i < ticks.length - 1 ?
-                Number(val).toFixed(8)
-                  .toLowerCase()
-                  .split('').join('\u200A'.repeat(1))
+                setLetterSpacingForText(Number(val).toFixed(8).toLowerCase(), 1)
                 : null
             ),
             align: 'start',
@@ -450,12 +470,7 @@ function chartCreate() {
             padding: 0,
             z: 2,
             color: '#fff',
-            font: {
-              // family: '',
-              size: 12,
-              weight: 'bold',
-              style: 'normal',
-            },
+            font: yAxisFontSettings,
             textStrokeColor: '#000',
             textStrokeWidth: 1,
           },
@@ -471,6 +486,17 @@ function chartCreate() {
           border: {
             display: false,
             width: 0,
+          },
+          afterFit(scaleInstance) {
+            const scaleWidth = scaleInstance.width;
+            const maxLabelLength = Math.max(...scaleInstance.ticks.map((item) => item.label.length));
+            const longestScaleTick = scaleInstance.ticks.find((item) => item.label.length === maxLabelLength);
+            const labelPixelWidth = getPixelForText(longestScaleTick.label, yAxisFontSettings.size);
+
+            if (yAxisEl) {
+              yAxisEl.style.width = `${labelPixelWidth + scaleWidth}px`;
+              yAxisEl.style.height = `${Math.floor(scaleInstance.height)}px`;
+            }
           },
         }
       },
@@ -501,10 +527,6 @@ function chartCreate() {
               enabled: true,
               speed: 0.05,
             },
-            onZoom(context) {
-              const zoomLevel = context.chart.getZoomLevel();
-              if (zoomLevel >= MAX_ZOOM_LEVEL) context.chart.zoom(0.8);
-            },
           },
         },
         legend: {
@@ -518,9 +540,9 @@ function chartCreate() {
             label: () => null,
             title: (chart) => {
               const { raw: { x: date, y: price } } = chart[0];
-              const dateFormatted = format(date, 'MMM d yyyy').toLowerCase().split('').join('\u200A'.repeat(1));
-              const timeFormatted = format(date, "h\u200A:\u200Amm aaaaa'm'").toLowerCase().split('').join('\u200A'.repeat(1));
-              const priceFormatted = `$${Number(price).toFixed(8).replace('.', '\u200A,\u200A')}`.toLowerCase().split('').join('\u200A'.repeat(1));
+              const dateFormatted = setLetterSpacingForText(format(date, 'MMM d yyyy').toLowerCase(), 1);
+              const timeFormatted = setLetterSpacingForText(format(date, "h\u200A:\u200Amm aaaaa'm'").toLowerCase(), 1);
+              const priceFormatted = setLetterSpacingForText(`$${Number(price).toFixed(8).replace('.', '\u200A,\u200A')}`.toLowerCase(), 1);
 
               return `${dateFormatted}\n${timeFormatted}\n${priceFormatted}`;
             },
