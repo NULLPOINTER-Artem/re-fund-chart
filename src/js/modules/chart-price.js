@@ -350,6 +350,7 @@ function chartCreate() {
     type: 'line',
     data,
     options: {
+      parsing: false,
       responsive: true,
       maintainAspectRatio: false,
       aspectRatio: 1,
@@ -386,6 +387,9 @@ function chartCreate() {
           suggestedMax: Xmax,
           min: Xmin,
           max: Xmax,
+          alignToPixels: true,
+          bounds: 'ticks',
+          clip: true,
           grid: {
             display: false,
           },
@@ -393,14 +397,17 @@ function chartCreate() {
             display: false
           },
           ticks: {
+            align: 'inner',
+            crossAlign: 'center',
             autoSkip: true,
             autoSkipPadding: 50,
             maxRotation: 0,
-            backdropPadding: 0,
+            minRotation: 0,
+            maxTicksLimit: 9,
             color: '#fff',
             font: {
               // family: '',
-              size: 14,
+              size: 12,
               weight: 'bold',
               style: 'normal',
             },
@@ -408,7 +415,10 @@ function chartCreate() {
               enabled: true,
             },
             padding: 10,
+            backdropPadding: 0,
             showLabelBackdrop: false,
+            source: 'auto',
+            sampleSize: 1,
           },
           time: {
             minUnit: 'minute',
@@ -416,6 +426,39 @@ function chartCreate() {
           },
         },
         y: {
+          alignToPixels: true,
+          bounds: 'ticks',
+          clip: true,
+          ticks: {
+            callback: (val, i, ticks) => (
+              i < ticks.length - 1 ?
+                Number(val).toFixed(8)
+                  .toLowerCase()
+                  .split('').join('\u200A'.repeat(1))
+                : null
+            ),
+            align: 'start',
+            mirror: true,
+            source: 'auto',
+            sampleSize: 1,
+            maxRotation: 0,
+            minRotation: 0,
+            maxTicksLimit: 9,
+            labelOffset: -17,
+            showLabelBackdrop: false,
+            backdropPadding: 0,
+            padding: 0,
+            z: 2,
+            color: '#fff',
+            font: {
+              // family: '',
+              size: 12,
+              weight: 'bold',
+              style: 'normal',
+            },
+            textStrokeColor: '#000',
+            textStrokeWidth: 1,
+          },
           position: 'left',
           suggestedMin: Ymin,
           suggestedMax: Ymax,
@@ -428,29 +471,6 @@ function chartCreate() {
           border: {
             display: false,
             width: 0,
-          },
-          ticks: {
-            callback: (val, i, ticks) => (
-              i < ticks.length - 1 ?
-                Number(val).toFixed(8)
-                  .toLowerCase()
-                  .split('').join('\u200A'.repeat(1))
-                : null
-            ),
-            display: true,
-            mirror: true,
-            backdropColor: '#000',
-            labelOffset: -11,
-            backdropPadding: 0,
-            padding: 0,
-            color: '#fff',
-            z: 2,
-            font: {
-              // family: '',
-              size: 14,
-              weight: 'bold',
-              style: 'normal',
-            },
           },
         }
       },
@@ -556,8 +576,12 @@ function chartCreate() {
       previousClientY = event.changedTouches ? event.changedTouches[0].clientY : event.clientY;
 
       // init move event
-      document.addEventListener('mousemove', yMouseMoveClb);
-      document.addEventListener('touchmove', yMouseMoveClb);
+      document.addEventListener('mousemove', yMouseMoveClb, {
+        passive: true,
+      });
+      document.addEventListener('touchmove', yMouseMoveClb, {
+        passive: true,
+      });
     };
 
     yMouseUpClb = () => {
@@ -588,13 +612,23 @@ function chartCreate() {
       }
 
       previousClientY = clientY;
-      chartInstance.update('none');
+      chartInstance.update({
+        duration: 0
+      });
     };
 
-    yAxisEl.addEventListener('mousedown', yMouseDownClb);
-    yAxisEl.addEventListener('touchstart', yMouseDownClb);
-    document.addEventListener('mouseup', yMouseUpClb);
-    document.addEventListener('touchend', yMouseUpClb);
+    yAxisEl.addEventListener('mousedown', yMouseDownClb, {
+      passive: true,
+    });
+    yAxisEl.addEventListener('touchstart', yMouseDownClb, {
+      passive: true,
+    });
+    document.addEventListener('mouseup', yMouseUpClb, {
+      passive: true,
+    });
+    document.addEventListener('touchend', yMouseUpClb, {
+      passive: true,
+    });
   }
 
   // Setup mouse-drag Y-axis board
@@ -606,8 +640,12 @@ function chartCreate() {
       previousClientX = event.changedTouches ? event.changedTouches[0].clientX : event.clientX;
 
       // init move event
-      document.addEventListener('mousemove', xMouseMoveClb);
-      document.addEventListener('touchmove', xMouseMoveClb);
+      document.addEventListener('mousemove', xMouseMoveClb, {
+        passive: true,
+      });
+      document.addEventListener('touchmove', xMouseMoveClb, {
+        passive: true,
+      });
     };
 
     xMouseUpClb = () => {
@@ -637,13 +675,23 @@ function chartCreate() {
       }
 
       previousClientX = clientX;
-      chartInstance.update('none');
+      chartInstance.update({
+        duration: 0
+      });
     };
 
-    xAxisEl.addEventListener('mousedown', xMouseDownClb);
-    xAxisEl.addEventListener('touchstart', xMouseDownClb);
-    document.addEventListener('mouseup', xMouseUpClb);
-    document.addEventListener('touchend', xMouseUpClb);
+    xAxisEl.addEventListener('mousedown', xMouseDownClb, {
+      passive: true,
+    });
+    xAxisEl.addEventListener('touchstart', xMouseDownClb, {
+      passive: true,
+    });
+    document.addEventListener('mouseup', xMouseUpClb, {
+      passive: true,
+    });
+    document.addEventListener('touchend', xMouseUpClb, {
+      passive: true,
+    });
   }
 };
 
@@ -672,18 +720,18 @@ export const init = async () => {
     chartDestroy();
 
     if (yAxisEl) {
-      yAxisEl.addEventListener('mousedown', yMouseDownClb);
-      yAxisEl.addEventListener('touchstart', yMouseDownClb);
-      document.addEventListener('mouseup', yMouseUpClb);
-      document.addEventListener('touchend', yMouseUpClb);
+      yAxisEl.removeEventListener('mousedown', yMouseDownClb);
+      yAxisEl.removeEventListener('touchstart', yMouseDownClb);
+      document.removeEventListener('mouseup', yMouseUpClb);
+      document.removeEventListener('touchend', yMouseUpClb);
       if (yMouseUpClb) yMouseUpClb(); // remove mouse/touch-move event listener
     }
 
     if (xAxisEl) {
-      xAxisEl.addEventListener('mousedown', xMouseDownClb);
-      xAxisEl.addEventListener('touchstart', xMouseDownClb);
-      document.addEventListener('mouseup', xMouseUpClb);
-      document.addEventListener('touchend', xMouseUpClb);
+      xAxisEl.removeEventListener('mousedown', xMouseDownClb);
+      xAxisEl.removeEventListener('touchstart', xMouseDownClb);
+      document.removeEventListener('mouseup', xMouseUpClb);
+      document.removeEventListener('touchend', xMouseUpClb);
       if (xMouseUpClb) xMouseUpClb(); // remove mouse/touch-move event listener
     }
   };

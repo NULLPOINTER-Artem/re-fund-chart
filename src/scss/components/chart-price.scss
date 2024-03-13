@@ -60,6 +60,12 @@
     pointer-events: none;
   }
 
+  @include media("xs") {
+    top: 60px;
+    padding-right: 10px;
+    gap: 7px;
+  }
+
   .chart__btn-day,
   .chart__btn-week,
   .chart__btn-month {
