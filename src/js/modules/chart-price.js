@@ -690,7 +690,8 @@ function chartCreate() {
       } else if (
         clientX > previousClientX && (
           scaleMinX > 0 &&
-          scaleMaxX > 0
+          scaleMaxX > 0 &&
+          scaleMinX >= (Xmin - xExtraZoomSpace)
         )
       ) {
         // Decrease period of X-axis (min/max)
