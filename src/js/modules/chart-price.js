@@ -243,12 +243,8 @@ const borderGradient = (ctx, chartArea, data, scales) => {
   const theData = data.datasets[0].data;
   if (!theData.length) return null;
 
-  const {
-    left, right,
-    top, bottom,
-    width, height
-  } = chartArea;
-  const { x, y } = scales;
+  const { bottom } = chartArea;
+  const { y } = scales;
   const gradientBorder = ctx.createLinearGradient(0, 0, 0, bottom);
 
   let shift = y.getPixelForValue(theData[0].y) / bottom;
@@ -511,7 +507,7 @@ function chartCreate() {
             sampleSize: 1,
             maxRotation: 0,
             minRotation: 0,
-            maxTicksLimit: 9,
+            maxTicksLimit: 11,
             labelOffset: -17,
             showLabelBackdrop: false,
             backdropPadding: 0,
