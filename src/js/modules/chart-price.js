@@ -13,6 +13,11 @@ Chart.register(zoomPlugin);
 
 // CONSTANTS
 
+const ZOOM_PERCENT_LIMIT = {
+  'day': 10,
+  'week': 20,
+  'month': 7,
+};
 const SPACE_UNICODE = '\u200A';
 const BACKEND_ENDPOINT = 'https://rfd-backend.vercel.app';
 
@@ -47,6 +52,7 @@ const getPixelForText = (str, fontSize = 14, fontFamily = 'Arial') => {
   return Math.round(ctx.measureText(str).width);
 };
 const setLetterSpacingForText = (str, letterSpacingInPx) => str.split('').join(SPACE_UNICODE.repeat(letterSpacingInPx));
+const getValueByPercentFromTotalSum = (percent, sum) => (percent / 100) * sum;
 
 // MAIN VARS
 
@@ -91,6 +97,10 @@ const displayTimeFormats = {
 */
 let fetchedData = [];
 const resetFetchedData = () => fetchedData.splice(0, fetchedData.length);
+
+// Time zoom limits
+let totalZoomValue = 0; // var for zoom
+let totalPercentOfZoom = ZOOM_PERCENT_LIMIT.day;
 
 // FETCH DATA HANDLERS
 
@@ -158,6 +168,11 @@ const fetchChartData = async (days = 1) => {
 
     if (response.error) throw new Error(response.error || 'Error while fetching chart price data');
 
+    totalZoomValue = getValueByPercentFromTotalSum(
+      totalPercentOfZoom,
+      response.reduce((prev, curr) => prev + Date.parse(curr.date), 0)
+    );
+
     handlerLoading(false);
     return response;
   } catch (err) {
@@ -195,6 +210,7 @@ async function handleActionBar(event) {
 
   // set selected time frame
   selectedTimeFrame = event.target.dataset.action;
+  totalPercentOfZoom = ZOOM_PERCENT_LIMIT[selectedTimeFrame];
   const allActionBtn = [].slice.call(this.querySelectorAll('button[data-type=action]'));
 
   allActionBtn.forEach((actionBtn) => {
@@ -370,6 +386,38 @@ function chartCreate() {
   };
   const PADDING_X_AXIS = 10;
 
+  let isStopZoom = false;
+  let xScaleMax = 0;
+  let xScaleMin = 0;
+  let prevZoomLvl = 1;
+  let arrayOfTime = [];
+
+  const addQueue = (arrayTicks) => {
+    arrayOfTime = Array.from(new Set(arrayOfTime.concat([...arrayTicks.map((tickItem) => tickItem.value)])).values());
+  };
+  const deleteQueue = (arrayValTicks) => {
+    arrayOfTime = arrayOfTime.filter((item) => !arrayValTicks.includes(item));
+  };
+  const accumulateSumOfTime = (scaleMinX, scaleMaxX) => {
+    const sumTimeZoom = arrayOfTime.reduce((prev, curr) => prev + curr, 0);
+
+    if (sumTimeZoom >= totalZoomValue && !isStopZoom) {
+      isStopZoom = true;
+
+      xScaleMin = scaleMinX;
+      xScaleMax = scaleMaxX;
+    }
+    else if (sumTimeZoom < totalZoomValue && isStopZoom) isStopZoom = false;
+  };
+  const keepZoomScaleTime = () => {
+    chartInstance.options.scales.x.min = xScaleMin;
+    chartInstance.options.scales.x.max = xScaleMax;
+
+    chartInstance.update({
+      duration: 0
+    });
+  };
+
   chartInstance = new Chart(contextChart, {
     type: 'line',
     data,
@@ -516,6 +564,13 @@ function chartCreate() {
             enabled: true,
             mode: 'xy',
             scaleMode: 'x',
+            onPan(context) {
+              if (isStopZoom) {
+                const { min: scaleMinX, max: scaleMaxX } = context.chart.scales.x;
+                xScaleMin = scaleMinX;
+                xScaleMax = scaleMaxX;
+              }
+            },
           },
           zoom: {
             mode: 'x',
@@ -526,6 +581,23 @@ function chartCreate() {
             wheel: {
               enabled: true,
               speed: 0.05,
+            },
+            onZoom(context) {
+              const currZoomLvl = context.chart.getZoomLevel();
+              const { ticks, min: scaleMinX, max: scaleMaxX } = context.chart.scales.x;
+
+              if (currZoomLvl > prevZoomLvl && !isStopZoom) addQueue(ticks);
+              else if (currZoomLvl < prevZoomLvl) deleteQueue(ticks.map((item) => item.value));
+
+              prevZoomLvl = currZoomLvl;
+
+              accumulateSumOfTime(scaleMinX, scaleMaxX);
+
+              if (isStopZoom) {
+                prevZoomLvl = 1; // after chart update - zoom will reset
+
+                keepZoomScaleTime();
+              }
             },
           },
         },
@@ -620,7 +692,7 @@ function chartCreate() {
       const yAddZoomSpace = (scaleMaxY - scaleMinY) * YAddSpace;
 
       if (clientY < previousClientY) {
-        // Increase period of Y-axis (min/max)    
+        // Increase scale
         chartInstance.options.scales.y.min = scaleMinY + yAddZoomSpace;
         chartInstance.options.scales.y.max = scaleMaxY - yAddZoomSpace;
       } else if (
@@ -629,7 +701,7 @@ function chartCreate() {
           scaleMaxY > 0
         )
       ) {
-        // Decrease period of Y-axis (min/max)
+        // Decrease scale
         chartInstance.options.scales.y.min = scaleMinY - yAddZoomSpace;
         chartInstance.options.scales.y.max = scaleMaxY + yAddZoomSpace;
       }
@@ -680,29 +752,34 @@ function chartCreate() {
     xMouseMoveClb = (event) => {
       event.preventDefault();
       const { clientX } = event.changedTouches ? event.changedTouches[0] : event;
-      const { min: scaleMinX, max: scaleMaxX } = chartInstance.options.scales.x;
-      const xAddZoomSpace = (scaleMaxX - scaleMinX) * XAddSpace;
+      const { ticks, min: scaleMinX, max: scaleMaxX } = chartInstance.scales.x;
 
-      if (clientX < previousClientX) {
-        // Increase period of X-axis (min/max)    
-        chartInstance.options.scales.x.min = scaleMinX + xAddZoomSpace;
-        chartInstance.options.scales.x.max = scaleMaxX - xAddZoomSpace;
-      } else if (
-        clientX > previousClientX && (
-          scaleMinX > 0 &&
-          scaleMaxX > 0 &&
-          scaleMinX >= (Xmin - xExtraZoomSpace)
-        )
-      ) {
-        // Decrease period of X-axis (min/max)
-        chartInstance.options.scales.x.min = scaleMinX - xAddZoomSpace;
-        chartInstance.options.scales.x.max = scaleMaxX + xAddZoomSpace;
+      if (clientX < previousClientX && !isStopZoom) addQueue(ticks);
+      else if (
+        clientX > previousClientX &&
+        scaleMinX >= (Xmin - xExtraZoomSpace)
+      ) deleteQueue(ticks.map((item) => item.value));
+
+      accumulateSumOfTime(scaleMinX, scaleMaxX);
+
+      if (isStopZoom) keepZoomScaleTime();
+      else {
+        const xAddZoomSpace = (scaleMaxX - scaleMinX) * XAddSpace;
+
+        if (clientX < previousClientX && !isStopZoom) {
+          chartInstance.options.scales.x.min = scaleMinX + xAddZoomSpace;
+          chartInstance.options.scales.x.max = scaleMaxX - xAddZoomSpace;
+        } else if (clientX > previousClientX && scaleMinX >= (Xmin - xExtraZoomSpace)) {
+          chartInstance.options.scales.x.min = scaleMinX - xAddZoomSpace;
+          chartInstance.options.scales.x.max = scaleMaxX + xAddZoomSpace;
+        }
+
+        chartInstance.update({
+          duration: 0
+        });
       }
 
       previousClientX = clientX;
-      chartInstance.update({
-        duration: 0
-      });
     };
 
     xAxisEl.addEventListener('mousedown', xMouseDownClb, {
