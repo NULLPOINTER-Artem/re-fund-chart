@@ -15,8 +15,8 @@ Chart.register(zoomPlugin);
 
 const ZOOM_PERCENT_LIMIT = {
   'day': 10,
-  'week': 20,
-  'month': 7,
+  'week': 15,
+  'month': 5,
 };
 const SPACE_UNICODE = '\u200A';
 const BACKEND_ENDPOINT = 'https://rfd-backend.vercel.app';
