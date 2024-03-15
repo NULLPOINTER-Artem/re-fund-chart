@@ -664,6 +664,7 @@ function chartCreate() {
   if (yAxisEl) {
     yMouseDownClb = (event) => {
       previousClientY = event.changedTouches ? event.changedTouches[0].clientY : event.clientY;
+      document.body.classList.add('disabled-scroll');
 
       // init move event
       document.addEventListener('mousemove', yMouseMoveClb, {
@@ -678,6 +679,7 @@ function chartCreate() {
       // remove move event
       document.removeEventListener('mousemove', yMouseMoveClb);
       document.removeEventListener('touchmove', yMouseMoveClb);
+      document.body.classList.remove('disabled-scroll');
     };
 
     yMouseMoveClb = (event) => {
