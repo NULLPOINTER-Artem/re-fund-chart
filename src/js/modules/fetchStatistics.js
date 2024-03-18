@@ -100,7 +100,6 @@ function setPriceStatistics(data) {
   const statisticDataContainer = document.querySelector('.statistics_data');
   if (!statisticDataContainer) return;
 
-  // TODO: How to determine a value is increased or decreased, mb I need old data for compare them
   const IS_INCREASED_PERCENT_CLASS_NAME = 'is-increased';
   const IS_DECREASED_PERCENT_CLASS_NAME = 'is-decreased';
   const setStatusPercent = (value) => {
@@ -128,6 +127,9 @@ function setPriceStatistics(data) {
             : `${percentPriceValue}%`
           : ''
       );
+
+      percentValueEl.classList.remove(IS_DECREASED_PERCENT_CLASS_NAME);
+      percentValueEl.classList.remove(IS_INCREASED_PERCENT_CLASS_NAME);
       percentValueEl.classList.add(status);
     }
   };
@@ -178,7 +180,7 @@ function setPriceStatistics(data) {
         Number(data.current_price_btc).toFixed(8) || ''
       );
 
-      setPercentValue(btcCurrency, Number(data.price_change_percentage_24h_btc).toFixed(2) || '');
+      setPercentValue(btcCurrency, Number(data.price_change_percentage_24h_btc).toFixed(3) || '');
     }
 
     if (ethCurrency) {
@@ -190,7 +192,7 @@ function setPriceStatistics(data) {
         Number(data.current_price_eth).toFixed(8) || ''
       );
 
-      setPercentValue(ethCurrency, Number(data.price_change_percentage_24h_eth).toFixed(2) || '');
+      setPercentValue(ethCurrency, Number(data.price_change_percentage_24h_eth).toFixed(3) || '');
     }
   }
 };
