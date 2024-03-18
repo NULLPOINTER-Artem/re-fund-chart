@@ -1,0 +1,89 @@
+.statistics_data {
+  --buy--view-more-width: 10.8125rem;
+  color: white;
+
+  padding-left: 1rem;
+  padding-right: calc(var(--buy--view-more-width) + 1rem);
+}
+
+.statistics_coin-info {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  .statistics_coin-logo {
+    width: 4.625rem;
+    margin-right: 0.75rem;
+    display: block;
+  }
+
+  .statistics_coin-text {
+    .statistics_coin-subtitle {
+      opacity: 0.5;
+      font-size: 0.875rem;
+      line-height: 1.29;
+    }
+    .statistics_coin-title {
+      text-transform: lowercase;
+      font-size: 3rem;
+      line-height: 1.17;
+      color: white;
+    }
+  }
+}
+
+.statistics_price {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  margin-top: 1.5rem;
+
+  .statistics_price-currency {
+    opacity: 0.25;
+    font-size: 4.5rem;
+    line-height: 1.11;
+  }
+
+  .statistics_price-value {
+    margin-right: 1.5rem;
+    font-size: 4.5rem;
+    line-height: 1.11;
+  }
+}
+
+.statistics_relative-price {
+  max-width: 40.875rem;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 1.5rem;
+  display: flex;
+
+  .statistics_currency {
+    display: flex;
+    align-items: baseline;
+    line-height: 1.19;
+
+    .statistics_currency-value {
+      margin-right: 1.5rem;
+    }
+
+    .statistics_currency-name {
+      text-transform: uppercase;
+      margin-right: 1.5rem;
+    }
+  }
+}
+
+.statistics_percentage {
+  --base-color-brand--red: #f61b5c;
+  --base-color-brand--green: #2fec2f;
+
+  line-height: 1.19;
+
+  &.is-increased {
+    color: var(--base-color-brand--green);
+  }
+  &.is-decreased {
+    color: var(--base-color-brand--red);
+  }
+}

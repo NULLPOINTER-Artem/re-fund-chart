@@ -1,8 +1,14 @@
 import $ from 'jquery';
-import { supportsWebp } from "./modules/functions.js";
 import { init as initChartPrice } from './modules/chart-price.js';
+import { init as initDataStatistics } from './modules/fetchStatistics.js';
+
+const unmountClb = [];
 
 $(() => {
-  supportsWebp();
-  initChartPrice();
+  unmountClb.push(initChartPrice());
+  unmountClb.push(initDataStatistics());
+});
+
+window.addEventListener('beforeunload', () => {
+  unmountClb.forEach((clb) => clb());
 });

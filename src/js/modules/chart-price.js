@@ -79,6 +79,7 @@ let xMouseMoveClb = null;
 
 let noDataEl = null;
 let loader = null;
+let isLoading = false;
 let chartInstance = null;
 let selectedTimeFrame = '';
 const displayTimeFormats = {
@@ -122,10 +123,12 @@ const handlerLoading = (show = true) => {
     if (noDataEl) noDataEl.classList.remove(CSS_CLASS_ACTIVE);
 
     if (show) {
+      isLoading = true;
       actionBarChart.classList.add('disabled');
       loader.classList.add(CSS_CLASS_ACTIVE);
     }
     else {
+      isLoading = false;
       actionBarChart.classList.remove('disabled');
       loader.classList.remove(CSS_CLASS_ACTIVE);
     }
@@ -795,29 +798,72 @@ function chartCreate() {
   }
 };
 
+function handleIntersectionOld(target) {
+  // Instant check on view
+  const targetPosition = target.getBoundingClientRect();
+  let isStartedInit = false;
+
+  if (targetPosition.top < window.innerHeight && targetPosition.bottom >= 0) {
+    const btnDay = document.querySelector('.chart__btn-day');
+
+    if (btnDay) {
+      btnDay.dispatchEvent(new Event('click', {
+        bubbles: true,
+        cancelable: true,
+      }));
+    }
+  }
+
+  // Scroll check on view
+  const handleScroll = () => {
+    const currentPosition = target.getBoundingClientRect();
+
+    if (currentPosition.top < window.innerHeight && currentPosition.bottom >= 0) {
+      if (!chartInstance || !isLoading || !isStartedInit) {
+        isStartedInit = true;
+        console.log('We have not the chart init!');
+        const btnDay = document.querySelector('.chart__btn-day');
+
+        if (btnDay) {
+          btnDay.dispatchEvent(new Event('click', {
+            bubbles: true,
+            cancelable: true,
+          }));
+        }
+      }
+    }
+  };
+
+  window.addEventListener("scroll", handleScroll);
+
+  return () => {
+    window.removeEventListener("scroll", handleScroll);
+  }
+};
+
 export const init = async () => {
+  let handleRemoveIntersection = null;
   chartWrapperEl = document.querySelector('.chart__wrapper');
   noDataEl = document.querySelector('.chart__empty-text');
   loader = document.querySelector('.chart__loader');
 
   // toolbar - time frames
   actionBarChart = document.querySelector('.chart__action-bar');
-  const btnDay = document.querySelector('.chart__btn-day');
+  // const btnDay = document.querySelector('.chart__btn-day');
 
   // X/Y-axis boards
   yAxisEl = document.querySelector('.chart__y-axis');
   xAxisEl = document.querySelector('.chart__x-axis');
 
-  if (actionBarChart) actionBarChart.addEventListener('click', handleActionBar);
-
-  // default time frame == 'day'
-  btnDay.dispatchEvent(new Event('click', {
-    bubbles: true,
-    cancelable: true,
-  }));
+  if (actionBarChart) {
+    actionBarChart.addEventListener('click', handleActionBar);
+    handleRemoveIntersection = handleIntersectionOld(actionBarChart);
+  }
 
   return () => {
     chartDestroy();
+
+    if (handleRemoveIntersection) handleRemoveIntersection();
 
     if (yAxisEl) {
       yAxisEl.removeEventListener('mousedown', yMouseDownClb);
