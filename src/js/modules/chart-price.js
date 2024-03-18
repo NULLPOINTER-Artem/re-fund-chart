@@ -8,9 +8,6 @@ import 'chartjs-adapter-date-fns';
 
 Chart.register(zoomPlugin);
 
-// TODO: (***) (Equal) -> find intersection points for fill them by correct gradient color
-// TODO: (****) Increase performance on mobile
-
 // CONSTANTS
 
 const ZOOM_PERCENT_LIMIT = {
@@ -224,22 +221,16 @@ async function handleActionBar(event) {
   // fetch data
   await handleTimeFrameSelect(selectedTimeFrame);
 
-  // update the chart
-  if (chartInstance) {
-    // eslint-disable-next-line no-use-before-define
-    chartDestroy();
-    // eslint-disable-next-line no-use-before-define
-    chartCreate();
-  } else {
-    // eslint-disable-next-line no-use-before-define
-    chartCreate();
-  }
+  // eslint-disable-next-line no-use-before-define
+  chartDestroy();
+  // eslint-disable-next-line no-use-before-define
+  chartCreate();
 }
 
 // Chart Helpers
 
 function chartDestroy() {
-  chartInstance.destroy();
+  if (chartInstance) chartInstance.destroy();
 };
 
 const borderGradient = (ctx, chartArea, data, scales) => {
@@ -417,6 +408,7 @@ function chartCreate() {
     });
   };
 
+  chartDestroy();
   chartInstance = new Chart(contextChart, {
     type: 'line',
     data,
@@ -798,70 +790,37 @@ function chartCreate() {
   }
 };
 
-function handleIntersectionOld(target) {
-  // Instant check on view
-  const targetPosition = target.getBoundingClientRect();
-  let isStartedInit = false;
+window.initChartPrice = () => {
+  actionBarChart = document.querySelector('.chart__action-bar');
+  const btnDay = document.querySelector('.chart__btn-day');
 
-  if (targetPosition.top < window.innerHeight && targetPosition.bottom >= 0) {
-    const btnDay = document.querySelector('.chart__btn-day');
-
-    if (btnDay) {
-      btnDay.dispatchEvent(new Event('click', {
-        bubbles: true,
-        cancelable: true,
-      }));
-    }
+  if (actionBarChart) {
+    actionBarChart.removeEventListener('click', handleActionBar);
+    actionBarChart.addEventListener('click', handleActionBar);
   }
 
-  // Scroll check on view
-  const handleScroll = () => {
-    const currentPosition = target.getBoundingClientRect();
-
-    if (currentPosition.top < window.innerHeight && currentPosition.bottom >= 0) {
-      if (!chartInstance || !isLoading || !isStartedInit) {
-        isStartedInit = true;
-        console.log('We have not the chart init!');
-        const btnDay = document.querySelector('.chart__btn-day');
-
-        if (btnDay) {
-          btnDay.dispatchEvent(new Event('click', {
-            bubbles: true,
-            cancelable: true,
-          }));
-        }
-      }
-    }
-  };
-
-  window.addEventListener("scroll", handleScroll);
-
-  return () => {
-    window.removeEventListener("scroll", handleScroll);
+  if (btnDay) {
+    btnDay.dispatchEvent(new Event('click', {
+      bubbles: true,
+      cancelable: true,
+    }));
   }
 };
 
 export const init = async () => {
-  let handleRemoveIntersection = null;
   chartWrapperEl = document.querySelector('.chart__wrapper');
   noDataEl = document.querySelector('.chart__empty-text');
   loader = document.querySelector('.chart__loader');
-
-  // toolbar - time frames
-  actionBarChart = document.querySelector('.chart__action-bar');
-  // const btnDay = document.querySelector('.chart__btn-day');
 
   // X/Y-axis boards
   yAxisEl = document.querySelector('.chart__y-axis');
   xAxisEl = document.querySelector('.chart__x-axis');
 
-  if (actionBarChart) {
-    actionBarChart.addEventListener('click', handleActionBar);
-    handleRemoveIntersection = handleIntersectionOld(actionBarChart);
-  }
+  initChartPrice();
 
   return () => {
     chartDestroy();
+    actionBarChart.removeEventListener('click', handleActionBar);
 
     if (handleRemoveIntersection) handleRemoveIntersection();
 

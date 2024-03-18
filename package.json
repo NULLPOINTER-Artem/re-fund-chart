@@ -57,20 +57,19 @@
     "gulp-webp-html-nosvg": "^1.1.1",
     "gulp-webpcss": "^1.1.1",
     "gulp-zip": "^6.0.0",
+    "normalize.css": "^8.0.1",
     "prettier": "^3.2.2",
     "sass": "^1.69.7",
     "terser-webpack-plugin": "^5.3.10",
     "vinyl-ftp": "^0.6.1",
     "webp-converter": "2.2.3",
     "webpack": "^5.89.0",
-    "webpack-stream": "^7.0.0",
-    "normalize.css": "^8.0.1"
+    "webpack-stream": "^7.0.0"
   },
   "dependencies": {
     "chart.js": "^4.4.1",
     "chartjs-adapter-date-fns": "^3.0.0",
     "chartjs-plugin-zoom": "^2.0.1",
-    "date-fns": "^3.3.1",
-    "jquery": "^3.7.1"
+    "date-fns": "^3.3.1"
   }
 }

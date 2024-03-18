@@ -177,7 +177,7 @@ function setPriceStatistics(data) {
           btcCurrency,
           '.statistics_currency-value'
         )[0],
-        Number(data.current_price_btc).toFixed(8) || ''
+        Number(data.current_price_btc).toFixed(12) || ''
       );
 
       setPercentValue(btcCurrency, Number(data.price_change_percentage_24h_btc).toFixed(3) || '');
@@ -189,7 +189,7 @@ function setPriceStatistics(data) {
           ethCurrency,
           '.statistics_currency-value'
         )[0],
-        Number(data.current_price_eth).toFixed(8) || ''
+        Number(data.current_price_eth).toFixed(12) || ''
       );
 
       setPercentValue(ethCurrency, Number(data.price_change_percentage_24h_eth).toFixed(3) || '');
