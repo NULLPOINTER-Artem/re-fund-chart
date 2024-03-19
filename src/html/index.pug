@@ -2,58 +2,31 @@ extends layouts/default.pug
 
 block head
   - const namePage = 'index';
-  - const pageTitle = 'Main Page';
+  - const pageTitle = 'Chart:rfd Page';
 
 block content
-  .statistics_data
-    .statistics_coin-info
-      img.statistics_coin-logo(
-        src='https://assets-global.website-files.com/65a9a08bc7bac8a3ada6c47c/65f4581cae0fc691f334f2fd_logo%403x.png',
-        loading='lazy',
-        width='74',
-        height='74',
-        alt='RFD refund logotype'
-      )
-      .statistics_coin-text
-        .statistics_coin-subtitle rfd
-        h2.statistics_coin-title RefundCoin
-    .statistics_price
-      .statistics_price-currency $
-      .statistics_price-value 0.00000310
-      .statistics_percentage 0%
-    .statistics_relative-price
-      .statistics_currency(data-name='btc')
-        .statistics_currency-value 0,00000000
-        .statistics_currency-name btc
-        .statistics_percentage.is-decreased +7.12%
-      .statistics_currency(data-name='eth')
-        .statistics_currency-value 0,00000000
-        .statistics_currency-name eth
-        .statistics_percentage.is-decreased -0.974%
-
-  .chart-main-wrapper
-    .chart-container
-      .chart__action-bar
-        button.chart__btn-day(
-          type='button',
-          data-type='action',
-          data-action='day'
-        ) 24h
-        button.chart__btn-week(
-          type='button',
-          data-type='action',
-          data-action='week'
-        ) week
-        button.chart__btn-month(
-          type='button',
-          data-type='action',
-          data-action='month'
-        ) month
-      .chart__wrapper
-        .chart__y-axis
-        .chart__x-axis
-        canvas#chart-price
-      .chart__empty-text
-        span No Data
-      .chart__loader
-        +icon('loader')
+  .chart-container
+    .chart__action-bar
+      button.chart__btn-day(
+        type='button',
+        data-type='action',
+        data-action='day'
+      ) 24h
+      button.chart__btn-week(
+        type='button',
+        data-type='action',
+        data-action='week'
+      ) week
+      button.chart__btn-month(
+        type='button',
+        data-type='action',
+        data-action='month'
+      ) month
+    .chart__wrapper
+      .chart__y-axis
+      .chart__x-axis
+      canvas#chart-price
+    .chart__empty-text
+      span No Data
+    .chart__loader
+      +icon('loader')

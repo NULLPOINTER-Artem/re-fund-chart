@@ -76,7 +76,6 @@ let xMouseMoveClb = null;
 
 let noDataEl = null;
 let loader = null;
-let isLoading = false;
 let chartInstance = null;
 let selectedTimeFrame = '';
 const displayTimeFormats = {
@@ -120,12 +119,10 @@ const handlerLoading = (show = true) => {
     if (noDataEl) noDataEl.classList.remove(CSS_CLASS_ACTIVE);
 
     if (show) {
-      isLoading = true;
       actionBarChart.classList.add('disabled');
       loader.classList.add(CSS_CLASS_ACTIVE);
     }
     else {
-      isLoading = false;
       actionBarChart.classList.remove('disabled');
       loader.classList.remove(CSS_CLASS_ACTIVE);
     }
@@ -821,8 +818,6 @@ export const init = async () => {
   return () => {
     chartDestroy();
     actionBarChart.removeEventListener('click', handleActionBar);
-
-    if (handleRemoveIntersection) handleRemoveIntersection();
 
     if (yAxisEl) {
       yAxisEl.removeEventListener('mousedown', yMouseDownClb);
